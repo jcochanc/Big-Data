@@ -8,7 +8,8 @@ output: pdf_document
 
 ```{r, echo = FALSE}
 # Libraries.
-pacman::p_load(dplyr, kableExtra, knitr, ggplot2, ISLR)
+pacman::p_load(dplyr, kableExtra, knitr, ggplot2, 
+               ISLR, corrplot, caret, glmnet)
 ```
 
 Book “An Introduction to Statistical Learning” by James G, Witten D, Hastie T, and Tibshirani (JWHT)
@@ -34,7 +35,7 @@ My intuition is that, in the case where we don't know the true relation \textbf{
 
 ### (d) Answer (c) using test rather than training RSS.
 
-Extending the idea above, we would expect that on the held out data, the test data, the RSS for the cubic will continue to be smaller than the linear RSS.
+We do not have enough information here given the infinitely many values the beta's can take.
 
 ## JWHT. Chapter 3. Question 13 (a)-(g). 
 
@@ -48,7 +49,7 @@ set.seed(1)
 ### (a) Using the rnorm() function, create a vector, \textbf{x}, containing 100 observations drawn from a $N(0,1)$ distribution. This represents a feature, $X$.
 
 ```{r}
-# Drawing 100 psuedo RS from N(0, 1).
+# Drawing 100 psuedo RV from N(0, 1).
 x <- rnorm(100)
 ```
 
@@ -123,7 +124,7 @@ ggplot(df, aes(x, y)) +
 
 ```{r}
 # Fit a quadratic model.
-quad_fit <- lm(y ~ poly(x, 2), data = df)
+quad_fit <- lm(y ~ poly(x, 2), raw = TRUE, data = df)
 
 summary(quad_fit)
 
@@ -263,6 +264,9 @@ coefs[,4] <- "<0.0001"
 kable(coefs, caption = "Estimated Coefficients",
       booktabs = TRUE, format = "latex") %>%
   kable_styling(latex_options=c("hold_position"))
+
+# Save the three fits for later comparison.
+fits_100 <- list(fit, fit_x1, fit_x2)
 ```
 
 ### (f) Do the results obtained in (c)-(e) contradict each other? Explain your answer.
@@ -280,7 +284,7 @@ y <- c(y,6)
 df3 <- data.frame(cbind(x1, x2, y))
 ```
 
-## Re-fit the linear models from (c) to (e) using this new data. 
+### Re-fit the linear models from (c) to (e) using this new data. 
 
 ```{r}
 # Refitting the three models.
@@ -323,39 +327,234 @@ par(mfrow=c(1,1))
 
 ```
 
+
+```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
+# Scatterplot with ggplot.
+ggplot(df3, aes(x1, x2)) +
+  geom_point() 
+
+```
+
 ## JWHT. Chapter 6. Question 5. 
 
 ### It is well-known that ridge regression tends to give similar coefficient values to correlated variables, whereas the lasso may give quite different coefficient values to correlated variables. We will now explore this property in a very simple setting.
 
 ### Suppose that $n = 2$, $p = 2$, $x_{11} = x_{12}$, $x_{21} = x_{22}$. Furthermore, suppose that $y_1+y_2 = 0$ and $x_{11}+x_{21} = 0$ and $x_{12}+x_{22} = 0$, so that the estimate for the intercept in a least squares, ridge regression, or lasso model is zero: $\hat{\beta_0} = 0$.
 
+Let $$\boldsymbol{Y}_{2 \times 1} = [y_1, y_2]^T$$, 
+
+$$\boldsymbol{X}_{2 \times 2} = \begin{bmatrix}
+ x_{11}& x_{12} \\ 
+ x_{21}& x_{22} 
+\end{bmatrix}$$
+
+Given the first set of conditions (1): $x_{11} = x_{12}$, $x_{21} = x_{22}$, we rewrite $\boldsymbol{X}_{2 \times 2}$:
+
+$$\boldsymbol{X}_{2 \times 2} = \begin{bmatrix}
+ x_{11}& x_{11} \\ 
+ x_{22}& x_{22} 
+\end{bmatrix}$$
+
+Furthermore, given that (2) $y_1+y_2 = 0$ and $x_{11}+x_{21} = 0$ and $x_{12}+x_{22} = 0$, we rewrite:
+
+$$\boldsymbol{X}_{2 \times 2} = \begin{bmatrix}
+ x_{11}& x_{12} \\ 
+ -x_{11}& -x_{12} 
+\end{bmatrix}$$
+
 ### (a) Write out the ridge regression optimization problem in this setting.
 
-### (b) Argue that in this setting, the ridge coefficient estimates satisfy $\hat{\beta_1} = \hat{\beta_1}$.
+Let $\boldsymbol{\beta} = [\beta_1, \beta_2]^T$, and $\boldsymbol{x}_i^T$ the $i^{th}$ row of the design matrix $\boldsymbol{X}_{2 \times 2}$ then the ridge regression in this setting is in the form: 
+
+$$\sum_i \left( y_i - \boldsymbol{x_i}^T \boldsymbol{\beta}\right)^2 + \lambda \sum_j \beta_j^2 = \sum_{i=1}^2 \left( y_i - \boldsymbol{x_i}^T \boldsymbol{\beta}\right)^2 + \lambda \sum_{j=1}^2 \beta_j^2$$
+
+
+### (b) Argue that in this setting, the ridge coefficient estimates satisfy $\hat{\beta_1} = \hat{\beta_2}$.
+
+We know that the estimates will be equal by the first set of conditions set in the problem. Note that the design matrix, without intercept, would be of the form:
+
+
+$$ \boldsymbol{X}_{2 \times 2} = \begin{bmatrix}
+ x_{11}& x_{12} \\ 
+ x_{21}& x_{22} 
+\end{bmatrix} = \begin{bmatrix}
+ x_{11}& x_{11} \\ 
+ x_{21}& x_{21} 
+\end{bmatrix}$$
+
+Clearly, given the same values for each $\beta_i$, we see the estimates should be equal for $\hat{\beta_1} = \hat{\beta_2}$.
 
 ### (c) Write out the lasso optimization problem in this setting.
 
+Following our notation above, the LASSO problem in this setting is of the form:
+
+$$\sum_i \left( y_i - \boldsymbol{x_i}^T \boldsymbol{\beta}\right)^2 + \lambda \sum_j |\beta_j| = \sum_{i=1}^2 \left( y_i - \boldsymbol{x_i}^T \boldsymbol{\beta}\right)^2 + \lambda \sum_{j=1}^2  |\beta_j|$$
+
 ### (d) Argue that in this setting, the lasso coefficients $\hat{\beta_1}$ and $\hat{\beta_2}$ are not unique-in other words, there are many possible solutions to the optimization problem in (c). Describe these solutions.
+
+Take note of the design matrix after applying (2) the second set of conditions in this problem. In this setting, we have reduced the row space.
 
 
 ## JWHT. Chapter 6. Question 9 (a)-(d). 
 
 ### In this exercise, we will predict the number of applications received using the other variables in the College data set.
 
+```{r}
+# Bring in the data.
+df <- College
+
+# Clean the variable names.
+names(df) <- tolower(names(df))
+```
+
 ### (a) Split the data set into a training set and a test set.
+
+```{r}
+set.seed(1)
+
+# We will split the data 80-20 train vs test.
+in_training <- createDataPartition(df$apps, p = .80,
+                                   list = F, times = 1)
+# Split into training.
+train <- df[in_training, ]
+
+# Split into testing.
+test <- df[-in_training, ]
+```
 
 ### (b) Fit a linear model using least squares on the training set, and report the test error obtained.
 
+We will fit a simple model based on correlated/linear predictors of the outcome of interest: apps. This is done so we have satisfied the assumptions of linearity in the application of a linear model.
+
+```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
+M <- cor(df %>% select(-private))
+corrplot(M, method = "circle")
+```
+
+Therefore, we would typically fit a simple model that regresses the number of applications a college receives on the number of applications (apps) accepted (accept), the number of students enrolled (enroll), and the number of fulltime undergraduates (f.undergrad).
+
+For the purposes of this exercise, we will fit our outcome of apps on all variables in the data. Our hope is that we should see most covariates penalized to zero, and especially this sort of variable selection within LASSO.
+
+```{r, echo = FALSE}
+fit <- lm(apps ~ ., data = train)
+
+fit.pred <- predict(fit, newdata = test)
+
+mean((test$apps-fit.pred)^2)
+```
+Our mean squared error on the training data is 1934162; not great. Of course, we could have included all the other variables and reduced our MSE but we would have wantonly included covariates without minimally examining that the assumptions of the model are checked.
+
 ### (c) Fit a ridge regression model on the training set, with $\lambda$ chosen by cross-validation. Report the test error obtained.
 
+To continue consistency, we perform a 5-fold cross validation as our training
+and test were split 80-20. We apply a grid search within the cv.glmnet() function. Below is a plot of our lambda values on the log scale.
+
+
+```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
+# We set a grid; for now we use one the book ISLR uses.
+grid <- 10^seq (10,-2, length =100)
+
+design_matrix <- model.matrix(apps ~ .-1, data = train)
+
+# Setting alpha = 0 chooses the ridge within the glmnet.
+lambda_cv <- cv.glmnet(design_matrix, train$apps,
+                       lambda = grid, nfolds = 5, alpha = 0)
+
+plot(lambda_cv)
+```
+
+Our lambda that minimizes our MSE is ~11. We will use this in our ridge model.
+
+```{r}
+lambda_cv$lambda.min
+```
+
+Below we see that our ridge model has a worse MSE than our simple linear model. In fact, the MSE has increased by 139564.
+
+```{r}
+ridge <- glmnet(design_matrix, 
+                train$apps, alpha = 0, lambda = lambda_cv$lambda.min)
+
+test_design_matrix <- model.matrix(apps ~ . -1, data = test)
+ridge.pred <- predict.glmnet(ridge, newx = test_design_matrix)
+
+mean((test$apps-ridge.pred)^2)
+```
+
 ### (d) Fit a lasso model on the training set, with $\lambda$ chosen by crossvalidation. Report the test error obtained, along with the number of non-zero coefficient estimates.
+
+```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
+# Setting alpha = 1 chooses the lasso within the glmnet.
+lambda_cv <- cv.glmnet(design_matrix, train$apps,
+                       lambda = grid, nfolds = 5, alpha = 1)
+
+plot(lambda_cv)
+```
+
+
+Our lambda that minimizes our MSE is ~19 in the LASSO setting. We will use this in our LASSO model.
+
+```{r}
+lambda_cv$lambda.min
+```
+
+Below we see that our lasso model has a worse MSE than our simple linear model. In fact, the MSE has increased by 221342.
+
+```{r}
+lasso <- glmnet(design_matrix, 
+                train$apps, alpha = 1, lambda = lambda_cv$lambda.min)
+
+lasso_pred <- predict.glmnet(lasso, newx = test_design_matrix)
+
+mean((test$apps-lasso_pred)^2)
+```
+
+We see that LASSO has penalized to zero the variables enroll, top25perc, books, personal.Essentially, we have whittled away 4 of the 18 variables. These results are not surprising as we left all variables in the model without descerning whether they should even be tested! Garbage in, garbage out.
 
 
 ## JWHT. Chapter 4. Question 10 (a)-(d), and (i). For (i), consider using model regularizations for model selection and for now, ignore the last sentence about the experiment with KNN classifier.
 
 ### This question should be answered using the Weekly data set, which is part of the ISLR package. This data is similar in nature to the Smarket data from this chapter’s lab, except that it contains 1,089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010.
 
+```{r}
+# Load in the ISLR Weekly data.
+df <- Weekly
+
+# Fix names for ease.
+names(df) <- names(df) %>% tolower()
+
+# Check that we have 1089 rows.
+nrow(df)
+
+# Check that we have 21 years worth.
+df %>% select(year) %>% table # yup!
+```
+
 ### (a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+
+```{r, echo = FALSE, include = FALSE, eval = FALSE}
+ggplot(data = df, mapping = aes(x = year, y = n, color = species_id)) +
+    geom_line()
+
+ggplot(data = df) +
+  geom_point(mapping = aes(x = year, y = volume, color = direction))
+
+ggplot(data = df) +
+  geom_point(mapping = aes(x = year, y = volume, color = year)) +
+  facet_wrap(~ direction) +
+  theme(legend.position="none")
+
+ggplot(data = df) +
+  geom_point(mapping = aes(x = lag1, y = today, color = year)) +
+  facet_wrap(~ direction) +
+  theme(legend.position="none")
+
+M <- cor(df %>% select(-direction, -year))
+corrplot(M, method = "ellipse")
+
+ggplot(data = df, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile()
+```
 
 ### (b) Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
 
