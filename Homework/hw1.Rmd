@@ -442,7 +442,7 @@ fit.pred <- predict(fit, newdata = test)
 
 mean((test$apps-fit.pred)^2)
 ```
-Our mean squared error on the training data is 1934162; not great. Of course, we could have included all the other variables and reduced our MSE but we would have wantonly included covariates without minimally examining that the assumptions of the model are checked.
+Our mean squared error on the training data is 2279815; not great. Of course, we could have included all the other variables and reduced our MSE but we would have wantonly included covariates without minimally examining that the assumptions of the model are checked.
 
 ### (c) Fit a ridge regression model on the training set, with $\lambda$ chosen by cross-validation. Report the test error obtained.
 
@@ -454,7 +454,8 @@ and test were split 80-20. We apply a grid search within the cv.glmnet() functio
 # We set a grid; for now we use one the book ISLR uses.
 grid <- 10^seq (10,-2, length =100)
 
-design_matrix <- model.matrix(apps ~ .-1, data = train)
+design_matrix <- model.matrix(apps ~ ., data = train) 
+design_matrix <- design_matrix[, -1]# remove int.
 
 # Setting alpha = 0 chooses the ridge within the glmnet.
 lambda_cv <- cv.glmnet(design_matrix, train$apps,
@@ -463,19 +464,26 @@ lambda_cv <- cv.glmnet(design_matrix, train$apps,
 plot(lambda_cv)
 ```
 
-Our lambda that minimizes our MSE is ~11. We will use this in our ridge model.
-
+Our lambda that minimizes our MSE is ~19.
 ```{r}
 lambda_cv$lambda.min
 ```
 
-Below we see that our ridge model has a worse MSE than our simple linear model. In fact, the MSE has increased by 139564.
+We will use one standard error away which is ~705.
+```{r}
+lambda_cv$lambda.1se
+```
+
+Below we see that our ridge model has increased the MSE relative to our simple linear model and is performing worse. In fact, the MSE has increased by 3179214
 
 ```{r}
 ridge <- glmnet(design_matrix, 
-                train$apps, alpha = 0, lambda = lambda_cv$lambda.min)
+                train$apps, alpha = 0, lambda = lambda_cv$lambda.1se)
 
-test_design_matrix <- model.matrix(apps ~ . -1, data = test)
+test_design_matrix <- model.matrix(apps ~ ., data = test)
+
+test_design_matrix <- test_design_matrix[ , -1]
+
 ridge.pred <- predict.glmnet(ridge, newx = test_design_matrix)
 
 mean((test$apps-ridge.pred)^2)
@@ -492,17 +500,19 @@ plot(lambda_cv)
 ```
 
 
-Our lambda that minimizes our MSE is ~19 in the LASSO setting. We will use this in our LASSO model.
+Our lambda that minimizes our MSE is ~19 in the LASSO setting. We will use this in our LASSO model. We will use one standard error of about 231 for our lambda to be conservative.
 
 ```{r}
 lambda_cv$lambda.min
+
+lambda_cv$lambda.1se
 ```
 
-Below we see that our lasso model has a worse MSE than our simple linear model. In fact, the MSE has increased by 221342.
+Below we see that our lasso model has a worse MSE than our simple linear model. In fact, the MSE has increased by 763034.30.
 
 ```{r}
 lasso <- glmnet(design_matrix, 
-                train$apps, alpha = 1, lambda = lambda_cv$lambda.min)
+                train$apps, alpha = 1, lambda = lambda_cv$lambda.1se)
 
 lasso_pred <- predict.glmnet(lasso, newx = test_design_matrix)
 
@@ -522,44 +532,80 @@ df <- Weekly
 
 # Fix names for ease.
 names(df) <- names(df) %>% tolower()
-
-# Check that we have 1089 rows.
-nrow(df)
-
-# Check that we have 21 years worth.
-df %>% select(year) %>% table # yup!
 ```
 
 ### (a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
 
 ```{r, echo = FALSE, include = FALSE, eval = FALSE}
-ggplot(data = df, mapping = aes(x = year, y = n, color = species_id)) +
-    geom_line()
+# ggplot(data = df) +
+#   geom_point(mapping = aes(x = year, y = volume, color = direction))
+# 
+# ggplot(data = df) +
+#   geom_point(mapping = aes(x = year, y = volume, color = year)) +
+#   facet_wrap(~ direction) +
+#   theme(legend.position="none")
 
-ggplot(data = df) +
-  geom_point(mapping = aes(x = year, y = volume, color = direction))
-
-ggplot(data = df) +
-  geom_point(mapping = aes(x = year, y = volume, color = year)) +
-  facet_wrap(~ direction) +
-  theme(legend.position="none")
-
-ggplot(data = df) +
-  geom_point(mapping = aes(x = lag1, y = today, color = year)) +
-  facet_wrap(~ direction) +
-  theme(legend.position="none")
+# ggplot(data = df) +
+#   geom_point(mapping = aes(x = lag1, y = today, color = year)) +
+#   facet_wrap(~ direction) +
+#   theme(legend.position="none")
 
 M <- cor(df %>% select(-direction, -year))
 corrplot(M, method = "ellipse")
 
-ggplot(data = df, aes(x=Var1, y=Var2, fill=value)) + 
-  geom_tile()
+
+
 ```
 
 ### (b) Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
 
+Below, at the 5\%, we can see that lag2 is statistically significant .
+
+```{r,echo = FALSE}
+logit_fit <- glm(direction ~ . - today - year, data = df,
+                 family = binomial(link = "logit")) 
+
+# Let's examine the estimated intercept and slope.
+coefs <- round(summary(logit_fit)$coefficients, 2)
+
+# Clean up p-vals.
+coefs[1 , 4] <- "<0.001"
+
+# Make table.
+kable(coefs, caption = "Estimated Coefficients",
+      booktabs = TRUE, format = "latex") %>%
+  kable_styling(latex_options=c("hold_position"))
+```
+
 ### (c) Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.
+
+```{r, echo = FALSE}
+prediction <- predict(logit_fit, data = df, type =  "response")
+predicted_direction <- ifelse(prediction >0.5, 1, 0) %>% as.factor()
+levels(predicted_direction) <- c("Down", "Up")
+confusionMatrix(predicted_direction, df$direction)
+```
 
 ### (d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).
 
-### (i) Experiment with different combinations of predictors, including possible transformations and interactions, for each of the methods. Report the variables, method, and associated confusion matrix that appears to provide the best results on the held out data. Note that you should also experiment with values for K in the KNN classifier.
+```{r, echo = FALSE}
+# Filter to data only up to 2208 including.
+train <- df %>% filter(year < 2009 )
+
+# Remaining is test.
+test <- df %>% filter(!year < 2009 ) 
+
+
+logit_fit <- glm(direction ~ lag2, data = train,
+                 family = binomial(link = "logit"))
+
+prediction <- predict(logit_fit, newdata = test %>% select(direction, lag2),
+                      type =  "response")
+
+predicted_direction <- ifelse(prediction >0.5, 1, 0) %>% as.factor()
+levels(predicted_direction) <- c("Down", "Up")
+confusionMatrix(predicted_direction, test$direction)
+
+```
+
+### (i) Experiment with different combinations of predictors, including possible transformations and interactions, for each of the methods. Report the variables, method, and associated confusion matrix that appears to provide the best results on the held out data.
