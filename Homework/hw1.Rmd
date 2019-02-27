@@ -649,10 +649,10 @@ We note that the accuracy is around 56\% which is not much better than naive gue
 
 ```{r, echo = FALSE}
 # Filter to data only up to 2208 including.
-train <- df %>% filter(year < 2009 )
+train <- df %>% filter(year < 2009 )  %>% dplyr::select(-today, -year)
 
 # Remaining is test.
-test <- df %>% filter(!year < 2009 ) 
+test <- df %>% filter(!year < 2009 )  %>% dplyr::select(-today, -year)
 
 
 logit_fit <- glm(direction ~ lag2, data = train,
@@ -674,6 +674,25 @@ We see that on the held out data, the test, we have better accuracy at 62.5\%. W
 
 ```{r, echo = FALSE}
 
+fitControl <- trainControl(## 5-fold CV
+  method = "cv",
+  number = 5,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary)
+
+pacman::p_load(knitr, dplyr, readstata13, kableExtra, 
+               sas7bdat, leaps, stats, AUC, MASS, 
+               bestglm, caret, AppliedPredictiveModeling,
+               rpart, rpart.plot, rlang)
+
+glm_fit <- train(direction ~ (.-volume+I(log(volume)))^2, data = train, 
+                    method = "glmStepAIC", 
+                    trControl = fitControl,
+                    na.action = na.omit,
+                    metric = "ROC")
+
+test <- test %>%
+  filter(complete.cases(test))
 
 
 ```
