@@ -9,7 +9,7 @@ output: pdf_document
 ```{r, echo = FALSE}
 # Libraries.
 pacman::p_load(dplyr, kableExtra, knitr, ggplot2, 
-               ISLR, corrplot, caret, glmnet)
+               ISLR, corrplot, caret, glmnet, MASS)
 ```
 
 Book “An Introduction to Statistical Learning” by James G, Witten D, Hastie T, and Tibshirani (JWHT)
@@ -320,16 +320,22 @@ df3 <- data.frame(cbind(x1, x2, y))
 
 ### Re-fit the linear models from (c) to (e) using this new data. 
 
-```{r}
+```{r, echo = FALSE}
 # Refitting the three models.
 fit <- lm(y ~ x1 + x2, data = df3)
 
 fit_x1 <- lm(y ~ x1, data = df3)
 
 fit_x2 <- lm(y ~ x2, data = df3)
+
+# Save for later use.
+fits_101 <- list("fit" = fit, "fit_x2" = fit_x1, "fit_x2" = fit_x2)
 ```
 
+
 ### What effect does this new observation have on the each of the models? 
+
+As we can see below, linear models are pretty robust. The mismeasured value has changed the estimates but overall, their confidence intervals still capture the true beta's.
 
 ```{r, echo = FALSE}
 # Let's examine the estimated intercept and slope.
@@ -347,27 +353,45 @@ kable(all_coefs, caption = "Estimated Coefficients",
       booktabs = TRUE, format = "latex") %>%
   kable_styling(latex_options=c("hold_position")) %>%
   group_rows("Full Model", 1, 3) %>%
-group_rows("X_1 Model", 4, 5) %>%
-group_rows("X_2 Model", 6, 7)
+  group_rows("X_1 Model", 4, 5) %>%
+  group_rows("X_2 Model", 6, 7)
 ```
+
 ### In each model, is this observation an outlier? A high-leverage point? Both? Explain your answers.
 
-```{r, echo = FALSE}
+Before identifying the mismeasured value as an outlier and/or leverage, we discuss briefly how we will examine and determine the two.
+
+An outlier may be found by examining the studentized residuals. An observation in absolute greater than 3 will be considered a possible outlier.
+
+```{r, echo = FALSE, fig.width=8, fig.height=3}  
+par(mfrow=c(1 ,3))
+
+for(i in 1:3){
+    plot(studres(fits_101[[i]]), main = names(fits_101)[i],
+         ylab = "Studentized Residuals",
+         xlab = "Fitted Values") +
+    abline(h = 3, col = "red") +
+    abline(h = -3, col = "red")
+  
+  }
 par(mfrow=c(1,3))
-plot(fit, 5)
-plot(fit_x1, 5)
-plot(fit_x2, 5)
-par(mfrow=c(1,1))
 
 ```
 
+Above we see that in fit_x1, our model that only includes x_1 as a predictor, the newly added and mismeasured data point can be considered an outlier. 
 
-```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
-# Scatterplot with ggplot.
-ggplot(df3, aes(x1, x2)) +
-  geom_point() 
 
+We examine the Cook's Distance plots for leverage point detection.
+
+```{r, echo = FALSE, fig.width=8, fig.height=3}  
+par(mfrow=c(1,3))
+plot(fit, 5, main = "fit")
+plot(fit_x1, 5, main ="fit_x1")
+plot(fit_x2, 5, main ="fit_x2")
+par(mfrow=c(1,3))
 ```
+
+Above we see that the 101th data point is considered a leverage point in the first model which includes x_1 and x_2 but not for the remaining models.
 
 ## JWHT. Chapter 6. Question 5. 
 
@@ -461,7 +485,7 @@ test <- df[-in_training, ]
 We will fit a simple model based on correlated/linear predictors of the outcome of interest: apps. This is done so we have satisfied the assumptions of linearity in the application of a linear model.
 
 ```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
-M <- cor(df %>% select(-private))
+M <- cor(df %>% dplyr::select(-private))
 corrplot(M, method = "circle")
 ```
 
@@ -634,7 +658,8 @@ test <- df %>% filter(!year < 2009 )
 logit_fit <- glm(direction ~ lag2, data = train,
                  family = binomial(link = "logit"))
 
-prediction <- predict(logit_fit, newdata = test %>% select(direction, lag2),
+prediction <- predict(logit_fit,
+                      newdata = test %>% dplyr:: select(direction, lag2),
                       type =  "response")
 
 predicted_direction <- ifelse(prediction >0.5, 1, 0) %>% as.factor()
