@@ -63,6 +63,7 @@ eps <- rnorm(100, mean = 0, sd = 0.5)
 
 ### (c) Using x and eps, generate a vector y according to the model 
 $$ Y = -1 + 0.5X + \epsilon. $$
+
 ### What is the length of the vector y? What are the values of $\beta_0$ and $\beta_1$ in this linear model?
 
 Before we generate y, we can see that y will have he same dimensions as x and eps. As both are $100 \times 1$ vectors, then their transformation according to the model above will results in a vector $\mathbf{y}_{100 \times 1}$. Additionally, we can see that the intercept is -1, i.e. $\beta_0 = -1$ and the slope is 1/2, i.e. $\beta_1 = 0.5$.
@@ -92,7 +93,7 @@ ggplot(df, aes(x, y)) +
 
 ### (e) Fit a least squares linear model to predict y using x. Comment on the model obtained. How do $\hat{\beta_0}$ and $\hat{\beta_1}$ compare to $\beta_0$ and $\beta_1$?
 
-```{r}
+```{r, echo = FALSE}
 # Now we fit a model to the data.
 lm_fit <- lm(y ~ x, data = df)
 
@@ -108,6 +109,8 @@ kable(coefs, caption = "Estimated Coefficients",
   kable_styling(latex_options=c("hold_position"))
 ```
 
+Our estimated values are nearly perfect given the true values generating the data. We see that our slope is on target and that a 95% confidence interval captures the intercept. 
+
 ### (f) Display the least squares line on the scatterplot obtained in (d). Draw the population regression line on the plot, in a different color. Use the legend() command to create an appropriate legend.
 
 ```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
@@ -117,19 +120,32 @@ ggplot(df, aes(x, y)) +
   geom_point() +
   geom_abline(intercept = as.numeric(coefs[1, 1]),
               slope = as.numeric(coefs[2,1]), color="red", 
-                 linetype="dashed", size=1) 
+                 linetype="solid", size=0.5) +
+  geom_abline(intercept =-1,
+              slope = 0.5, color="blue", 
+                 linetype="solid", size=0.5)
 ```
 
 ### (g) Now fit a polynomial regression model that predicts y using x and x2. Is there evidence that the quadratic term improves the model fit? Explain your answer.
 
 ```{r}
 # Fit a quadratic model.
-quad_fit <- lm(y ~ poly(x, 2), raw = TRUE, data = df)
+quad_fit <- lm(y ~ poly(x, 2, raw = TRUE), data = df)
+```
 
-summary(quad_fit)
+Below we see that the quadratic term is not statistically significant.
+```{r}
+summary(quad_fit)$coefficients
+```
 
+To further test this we can also compare our linear model to our quadratic model since they are nested.
+
+```{r}
 anova(lm_fit, quad_fit)
 ```
+
+We see that we fail to reject the null hypothesis that the coefficient of the quadratic term is zero. We conclude as before that there is no evidence that the quadratic term improves the model fit.
+
 
 ## JWHT. Chapter 3. Question 14. 
 
@@ -145,9 +161,8 @@ set.seed(1)
 x1 <- runif(100)
 
 # Creating x2 which follows a model:
-# Y = 0.5 x1*U(0,1)/10
+# Y = 0.5*x1 + N(0,1)/10
 x2 <- 0.5 * x1 + rnorm (100) / 10
-# Q: Couldn't we have just drawn 100 PRv from U(0, 100)?
 
 # Builing y according to the model below.
 y <- 2 + 2 * x1 + 0.3 * x2 + rnorm(100)
@@ -171,7 +186,7 @@ cor(x1, x2)
 This is no surprise to us as $X_2$ is linearly related, by construction:
 
 $$X_2 = 0.5 X_1 + \epsilon_{x_1}$$
-where $\epsilon_{x_1}$ are 100 PSV from a $N(0,1)/10$, wher we have abused the notation but denote the 100 PRV from the standard normal have been divided by 10.
+where $\epsilon_{x_1}$ are 100 pseudorandomn values(PSV) from a $N(0,1)/10$, where we have abused the notation but denote the 100 PRV from the standard normal have been divided by 10.
 
 
 ```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
@@ -195,7 +210,9 @@ fit <- lm(y ~ x1 + x2, data = df2)
 
 ### How do these relate to the true $\beta_0$, $\beta_1$, and $\beta_2$? 
 
-```{r, echo = TRUE}
+We know the true values are $\beta_0 = 2$, $\beta_1 = 2$ and $\beta_3 = 0.3$. We see that our model is having the most trouble with $X_2$, and with 95\% confidence, we capture the intercept and $\beta_1$. 
+
+```{r, echo = FALSE}
 # Let's examine the estimated intercept and slope.
 coefs <- round(summary(fit)$coefficients, 2)
 
@@ -208,21 +225,9 @@ kable(coefs, caption = "Estimated Coefficients",
   kable_styling(latex_options=c("hold_position"))
 ```
 
-
-```{r, echo = TRUE}
-true_betas <- c(2,2,1)
-names_betas <- c("Intercept", "x1", "x2")
-
-table <- cbind("Coefficients" = names_betas, "True Beta's" = true_betas)
-
-# Make table.
-kable(table, caption = "True Coefficients",
-      booktabs = TRUE, format = "latex") %>%
-  kable_styling(latex_options=c("hold_position"))
-
-```
-
 ### Can you reject the null hypothesis $H_0: \beta_1 = 0$? How about the null hypothesis $H_0: \beta_2 = 0$?
+
+Since the p-vales for $X_1$ and $X_2$ related to a wald test, we know that at a 5\% significance level, we would fail to reject the null hypotheses that these beta's are zero. Obviously, a less conservative signifiance level like 10\% would reject for $\beta_1$ but not for $\beta_2$.
 
 ### (d) Now fit a least squares regression to predict y using only x1. Comment on your results. Can you reject the null hypothesis $H_0: \beta_1 = 0$?
 
@@ -244,6 +249,7 @@ kable(coefs, caption = "Estimated Coefficients",
   kable_styling(latex_options=c("hold_position"))
 ```
 
+Please see part (f) for the derivation, but we know that $$Y = 2 + 2.15 X_1 + \epsilon_{\text{new}}$$. Using a 5\% significance level, we fail to reject the null hypothesis that $\beta_1=0$.
 
 ### (e) Now fit a least squares regression to predict y using only x2. Comment on your results. Can you reject the null hypothesis $H_0: \beta_1 = 0$?
 
@@ -269,9 +275,37 @@ kable(coefs, caption = "Estimated Coefficients",
 fits_100 <- list(fit, fit_x1, fit_x2)
 ```
 
+See part (f) for a derivation. Note that we can rewrite the model as $$Y  = 2 + 4.3 X_2 + \epsilon_{\text{new}_2}$$
+
+In this light, we can see why we fail to reject the null hypothsis at the 5\% significance level.
+
+
 ### (f) Do the results obtained in (c)-(e) contradict each other? Explain your answer.
 
-Yes.
+Yes and no. Yes, (c) contradicts (d) and (e), but (d) does not contradict (e). We can see why below.
+
+Recall:
+
+$$Y = 2 + 2X_1 + 0.3 X_2 + \epsilon$$
+
+and 
+
+$$X_2 = 0.5 X_1 + \epsilon_{x_1}$$
+
+then, we know that:
+
+$$Y = 2 + 2X_1 + 0.3 (0.5 X_1 + \epsilon_{x_1})+ \epsilon  = 2 + 2.15 X_1 + \epsilon_{\text{new}}$$
+
+Alternatively, 
+$$X_2 = 0.5 X_1 + \epsilon_{x_1} \Rightarrow X_1 = 2(X_2-\epsilon_{x_1})$$
+
+and in this light we can see that $Y$ can be written as a function soley of $X_2$.
+
+$$Y = 2 + 2(2(X_2-\epsilon_{x_1})) + 0.3 X_2 + \epsilon  = 2 + 4.3 X_2 + \epsilon_{\text{new}_2}$$
+
+If we examine the estimated coefficients for $X_1$ in (d), we see we are very close with our 1.98 estimate. The estimated coefficient for $X_2$ isn't exactly on the nail but within a 95\% confidence interval.
+
+
 
 ### (g) Now suppose we obtain one additional observation, which was unfortunately mismeasured.
 
@@ -552,9 +586,6 @@ names(df) <- names(df) %>% tolower()
 
 M <- cor(df %>% select(-direction, -year))
 corrplot(M, method = "ellipse")
-
-
-
 ```
 
 ### (b) Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
@@ -583,8 +614,12 @@ kable(coefs, caption = "Estimated Coefficients",
 prediction <- predict(logit_fit, data = df, type =  "response")
 predicted_direction <- ifelse(prediction >0.5, 1, 0) %>% as.factor()
 levels(predicted_direction) <- c("Down", "Up")
-confusionMatrix(predicted_direction, df$direction)
+
+confusionMatrix(predicted_direction, df$direction)$table
 ```
+
+We note that the accuracy is around 56\% which is not much better than naive guessing. Typically, the setting of the study would help us determine what we would want to optimize. This meaning, are we interested in increasing our sensitivity or specificity In this case, as we are trying to predict the direction of the stock market, we would want to increase both our values in the diagonal of the confusion matrix. We note that the sensitivity is poor (~11\%), and so logistic regression is having trouble predicting the markets Down direction.
+
 
 ### (d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).
 
@@ -604,8 +639,16 @@ prediction <- predict(logit_fit, newdata = test %>% select(direction, lag2),
 
 predicted_direction <- ifelse(prediction >0.5, 1, 0) %>% as.factor()
 levels(predicted_direction) <- c("Down", "Up")
-confusionMatrix(predicted_direction, test$direction)
-
+confusionMatrix(predicted_direction, test$direction)$table
 ```
 
+We see that on the held out data, the test, we have better accuracy at 62.5\%. While specificity has remained about the same (~92\%), sensitivity has almost doubled to ~21\%. The Positive Predicted Value is 64.28\% and the Negative Predicted Value is 62.22\%.
+
 ### (i) Experiment with different combinations of predictors, including possible transformations and interactions, for each of the methods. Report the variables, method, and associated confusion matrix that appears to provide the best results on the held out data.
+
+
+```{r, echo = FALSE}
+
+
+
+```
