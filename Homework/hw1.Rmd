@@ -9,7 +9,8 @@ output: pdf_document
 ```{r, echo = FALSE}
 # Libraries.
 pacman::p_load(dplyr, kableExtra, knitr, ggplot2, 
-               ISLR, corrplot, caret, glmnet, MASS)
+               ISLR, corrplot, caret, glmnet, MASS,
+               usdm, leaps, pROC)
 ```
 
 Book “An Introduction to Statistical Learning” by James G, Witten D, Hastie T, and Tibshirani (JWHT)
@@ -116,14 +117,12 @@ Our estimated values are nearly perfect given the true values generating the dat
 ```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
 
 # Scatterplot with ggplot.
-ggplot(df, aes(x, y)) +
-  geom_point() +
-  geom_abline(intercept = as.numeric(coefs[1, 1]),
-              slope = as.numeric(coefs[2,1]), color="red", 
-                 linetype="solid", size=0.5) +
-  geom_abline(intercept =-1,
-              slope = 0.5, color="blue", 
-                 linetype="solid", size=0.5)
+plot(df$x, df$y, pch  = 20, xlab = "X", ylab = "Y")
+abline(a = as.numeric(coefs[1, 1]),
+       b = as.numeric(coefs[2,1]), col="red")
+abline(a =-1, b = 0.5, col="blue")
+legend(x = 0.75, y =-1.5, legend = c("Regresion Line", "Population Line"), lty=c(1,1), col = c("red", "blue"), cex=0.6,
+       box.lty=0)
 ```
 
 ### (g) Now fit a polynomial regression model that predicts y using x and x2. Is there evidence that the quadratic term improves the model fit? Explain your answer.
@@ -594,21 +593,31 @@ names(df) <- names(df) %>% tolower()
 
 ### (a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
 
-```{r, echo = FALSE, include = FALSE, eval = FALSE}
-# ggplot(data = df) +
-#   geom_point(mapping = aes(x = year, y = volume, color = direction))
-# 
-# ggplot(data = df) +
-#   geom_point(mapping = aes(x = year, y = volume, color = year)) +
-#   facet_wrap(~ direction) +
-#   theme(legend.position="none")
+Since `direction` is a recoding of today, we examine today. Below we note that there seems to be no linear relationships between the variables and `today`. 
+ 
+```{r, echo = FALSE, fig.align = "center", fig.asp = .78, fig.width=6.5, warning = FALSE}
+# Pairs plot.
+pairs(df %>% dplyr::select(-direction), cex.labels=1, col="dark blue")
+```
 
-# ggplot(data = df) +
-#   geom_point(mapping = aes(x = lag1, y = today, color = year)) +
-#   facet_wrap(~ direction) +
-#   theme(legend.position="none")
+Additonally, we note a relationship, possibly logistic, between `year` and `volume`, suggesting collinearity between our predictors. We can verify this simply by examining the VIF statistics.
 
-M <- cor(df %>% select(-direction, -year))
+```{r, echo = FALSE}
+
+vifval <- vif(df %>% dplyr::select(-direction))
+
+# Make table.
+kable(vifval, caption = "Variance Inflation Factor", digits = 3,
+      booktabs = TRUE, format = "latex") %>%
+  kable_styling(latex_options=c("hold_position"))
+
+```
+
+Indeed, we see that there is a relationship between `year` and `volume`. Below, we find that that `lag1` and `lag3` are positively correlated with `today` while `lag2` is negatively correlated with the continuous outcome.
+
+```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
+
+M <- cor(df %>% dplyr::select(-direction, -year))
 corrplot(M, method = "ellipse")
 ```
 
@@ -669,30 +678,71 @@ confusionMatrix(predicted_direction, test$direction)$table
 
 We see that on the held out data, the test, we have better accuracy at 62.5\%. While specificity has remained about the same (~92\%), sensitivity has almost doubled to ~21\%. The Positive Predicted Value is 64.28\% and the Negative Predicted Value is 62.22\%.
 
+\newpage
+
 ### (i) Experiment with different combinations of predictors, including possible transformations and interactions, for each of the methods. Report the variables, method, and associated confusion matrix that appears to provide the best results on the held out data.
 
+We ran 5-fold cross validation on the training data. Intermittently, we performed forward and backward selection to perform variable selection on a set of interactions and a log tranformation on `volume` as we noted earlier.
 
-```{r, echo = FALSE}
 
+```{r, echo = FALSE, fig.width=8, fig.height=3}  
+par(mfrow=c(1 ,2))
+plot(df$volume, ylab = "volume", main = "No Tranform")
+plot(log(df$volume), ylab = "log volume", main = "Log Tranform")
+
+par(mfrow=c(1,2))
+
+```
+
+The final model selected by `caret` includes `lag1`, `lag2` and `lag5:log(volume)`. 
+
+```{r, echo = FALSE, include = FALSE}
+set.seed(14)
 fitControl <- trainControl(## 5-fold CV
   method = "cv",
   number = 5,
   classProbs = TRUE,
   summaryFunction = twoClassSummary)
 
-pacman::p_load(knitr, dplyr, readstata13, kableExtra, 
-               sas7bdat, leaps, stats, AUC, MASS, 
-               bestglm, caret, AppliedPredictiveModeling,
-               rpart, rpart.plot, rlang)
-
 glm_fit <- train(direction ~ (.-volume+I(log(volume)))^2, data = train, 
                     method = "glmStepAIC", 
                     trControl = fitControl,
                     na.action = na.omit,
                     metric = "ROC")
+```
 
-test <- test %>%
-  filter(complete.cases(test))
+```{r}
+glm_fit$finalModel
+```
+
+On the test data, we have an AUC of 0.57. We also find that the optimal threshold is ~53\%.
+
+```{r, echo = FALSE}
+final_model <-  glm(direction ~ lag1 +lag2 + lag5:volume,
+                data = train,
+                family=binomial)
 
 
+
+test$pred <- predict(final_model, newdata = test, type = "response")
+
+auc_roc <- roc(test$direction, test$pred)
+
+auc(auc_roc)
+
+coords(auc_roc, "best", ret=c("threshold", "specificity", "1-npv"))
+
+```
+Below, we have confusion matrix of the model selected. Because `Down` is the direction we are predicting in our model, we note that the specificity of this model is good at ~79\% but the sensitivity is poor at around 44\%. Our accuracy is around 64\%.
+
+```{r, echo = FALSE}
+predicted_direction <- ifelse(test$pred >0.5293889, 1, 0) %>% as.factor()
+levels(predicted_direction) <- c("Down", "Up")
+confusionMatrix(predicted_direction, test$direction)$table
+```
+
+
+# Code Appendix
+
+```{r code = readLines(knitr::purl("C:/Users/jcochanc/Documents/Big-Data/Homework/hw1.Rmd", documentation = 1)), echo = T, eval = F}
 ```
