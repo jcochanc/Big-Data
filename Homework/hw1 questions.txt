@@ -1,0 +1,12 @@
+Book “An Introduction to Statistical Learning” by James G, Witten D, Hastie T, and Tibshirani (JWHT)
+
+------------
+
+JWHT. Chapter 3. Question 4. 
+JWHT. Chapter 3. Question 13 (a)-(g). 
+JWHT. Chapter 3. Question 14. 
+JWHT. Chapter 6. Question 5. 
+JWHT. Chapter 6. Question 9 (a)-(d). 
+JWHT. Chapter 4. Question 10 (a)-(d), and (i). For (i), 
+consider using model regularizations for model selection and for now,
+ignore the last sentence about the experiment with KNN classifier.    
