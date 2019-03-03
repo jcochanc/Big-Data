@@ -28,7 +28,7 @@ $$(1 + X_1)^2 + (2 - X_2)^2 = 4.$$
 
 ### (b) On your sketch, indicate the set of points for which
 
-$$ (1 + X1)2 + (2 - X2)^2 > 4,$$
+$$ (1 + X1)^2 + (2 - X2)^2 > 4,$$
 
 ### as well as the set of points for which
 
