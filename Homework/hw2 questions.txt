@@ -1,0 +1,6 @@
+Book “An Introduction to Statistical Learning” by James G, Witten D, Hastie T, and Tibshirani (JWHT)
+
+------------
+JWHT Chp 9 (Page 368)
+
+Q1, Q2, Q5, Q7, and Q8
