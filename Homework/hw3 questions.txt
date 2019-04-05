@@ -1,0 +1,10 @@
+JWHT. Chapter 8, Page 332.
+
+
+#3. Also, comment on the similarity and difference among the three loss functions, and what that implies on model training. 
+#4. 
+#5 
+#7. 
+#8. (Regression tree; RF) 
+#9. (Classification tree)
+#11. (a)-(c). For (c), compare the boosting method with logistic regression.
