@@ -1,29 +1,7 @@
----
-title: "Homework 2"
-author: "Jerson R. Cochancela"
-date:  "`r format(Sys.time(), '%B %d, %Y')`"
-output: pdf_document
----
-
-```{r, echo = FALSE}
 # Libraries.
 pacman::p_load(dplyr, kableExtra, knitr, ggplot2, 
                ISLR, caret, scatterplot3d, rgl, calibrate, plotrix,
                pROC, e1071, usdm)
-```
-
-
-Book “An Introduction to Statistical Learning” by James G, Witten D, Hastie T, and Tibshirani (JWHT)
-
-------------
-
-## JWHT. Chp 9 Question 1.
-
-### This problem involves hyperplanes in two dimensions.
-
-### (a) Sketch the hyperplane $1 + 3X_1 - X_2 = 0$. Indicate the set of points for which $1 + 3X_1 - X_2 > 0$, as well as the set of points for which $1 + 3X_1 - X_2 < 0$.
-
-```{r, echo = FALSE, fig.align = "center", fig.asp = .78, fig.width=4.5, warning = FALSE}
 # First we initialize x1 and x2
 x1 <- x2 <- seq(-1.5, 1.5, length.out = 10)
 
@@ -45,13 +23,6 @@ legend("topright", legend = c(expression(1 + 3*X[1] - X[2] >= 0),
        col = c("lightblue", "lightpink"),  pch = c(1,1),
        cex = 0.8,
        bg = "white")
-```
-
-
-
-### (b) On the same plot, sketch the hyperplane $-2 + X_1 + 2X_2 = 0$. Indicate the set of points for which $-2+ X_1 +2X_2 > 0$, as well as the set of points for which $-2+ X_1 + 2X_2 < 0$.
-
-```{r, echo = FALSE, fig.align = "center", fig.asp = .78, fig.width=4.5, warning = FALSE}
 # Create a classifier based on the question.
 classifier_2 <- grid$x2 <=  (1-0.5*grid$x1)
 
@@ -76,42 +47,6 @@ legend("bottomright", legend = c(expression(1 + 3*X[1] - X[2] == 0),
        col = c("black", "red"),  lty = c(1, 1),
        cex = 0.8,
        bg = "white")
-```
-
-## JWHT. Chp 9 Question 2.
-
-### We have seen that in $p = 2$ dimensions, a linear decision boundary takes the form $\beta_0 + \beta_1 X_1 + \beta_2 X_2 = 0$.We now investigate a non-linear decision boundary.
-
-### (a) Sketch the curve
-
-$$(1 + X_1)^2 + (2 - X_2)^2 = 4.$$
-
-### (b) On your sketch, indicate the set of points for which
-
-$$ (1 + X_1)^2 + (2 - X_2)^2 > 4,$$
-
-### as well as the set of points for which
-
-$$ (1 + X_1)^2 + (2 - X_2)^2 \leq 4.$$
-
-First note that in terms of $X_2$, we have the follow:
-
-$$ (1 + X_1)^2 + (2 - X_2)^2 = 4 \Longrightarrow  (2 - X_2)^2 = 4 - (1 + X_1)^2$$
-
-$$\therefore X_2 = 2 \pm \sqrt{4 - (1 + X_1)^2}$$
-
-We can use this to draw the classifying curve or we can simply note that we have the equation of a circle centers at (-1, 2) with radius 2.
-
-### (c) Suppose that a classifier assigns an observation to the blue class if
-
-$$(1 + X_1)^2 + (2 - X_2)^2 > 4,$$
-
-
-### and to the red class otherwise. To what class is the observation $(0, 0)$ classified? $(-1, 1)$? $(2, 2)$? $(3, 8)$?
-
-We fit (a), (b), and (c) on the following plot:
-
-```{r, echo = FALSE,fig.width=4.5, fig.height = 4.5, warning = FALSE}
 # First we initialize x1 and x2
 x1 <- seq(-4, 4, length.out = 1000)
 x2 <- seq(-4, 8, length.out = 1000)
@@ -134,22 +69,6 @@ legend("bottomright", legend = c(expression((1 + X[1])^2 + (2 - X[2])^2 > 4),
        col = c("blue", "red"),  pch = c(20, 20),
        cex = 0.8,
        bg = "white")
-```
-
-We see that points A and B are on the interior of the circle and points C and D are on the exterior.
-
-### (d) Argue that while the decision boundary in (c) is not linear in terms of $X_1$ and $X_2$, it is linear in terms of $X_1$, $X_1^2$, $X_2$, and $X_2^2$.
-
-This follows from the expansion of the quadratic terms in the definition of a circle.
-
-
-## JWHT. Chp 9 Question 5.
-
-### We have seen that we can fit an SVM with a non-linear kernel in order to perform classification using a non-linear decision boundary. We will now see that we can also obtain a non-linear decision boundary by performing logistic regression using non-linear transformations of the features.
-
-### (a) Generate a data set with $n = 500$ and $p = 2$, such that the observations belong to two classes with a quadratic decision boundary between them. For instance, you can do this as follows:
-
-```{r}
 # Set a seed so we can reproduce results.
 set.seed(14)
 
@@ -157,12 +76,6 @@ set.seed(14)
 x1 <- runif(500) - 0.5
 x2 <- runif(500) - 0.5
 y <- 1*(x1^2 - x2^2 > 0)
-```
-
-
-### (b) Plot the observations, colored according to their class labels. Your plot should display $X_1$ on the $x$-axis, and $X_2$ on the $y$-axis.
-
-```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
 # First we plot the red and then the blue points.
 plot(x1[y == 1], x2[y == 1], col = "red",
      xlab = expression(italic(X)[1]),
@@ -173,17 +86,6 @@ legend("right", legend = c(expression(X[1]^2 - X[2]^2 > 0),
        col = c("red", "blue"),  pch = c(1, 1),
        cex = 0.8,
        bg = "white")
-```
-
-### (c) Fit a logistic regression model to the data, using $X_1$ and $X_2$ as predictors.
-
-We seek:
-
-$$\text{logit}P(Y = 1) = \beta_0 + \beta_1 X_1 + \beta_2 X_2,$$
-
-where $P(Y = 1) = \dfrac{1}{1 + \text{exp}(-[\beta_0 + \beta_1 X_1 + \beta_2 X_2])}$
-
-```{r}
 # We wrangle the data.
 df <- data.frame(cbind(y, x1, x2))
 
@@ -191,11 +93,6 @@ df <- data.frame(cbind(y, x1, x2))
 fit_train <- glm(y ~ x1 + x2,
                  family = binomial(link = "logit"),
                  data = df)
-```
-
-### (d) Apply this model to the training data in order to obtain a predicted class label for each training observation. Plot the observations, colored according to the predicted class labels. The decision boundary should be linear.
-
-```{r}
 # We predict using the model.
 pred <- predict(fit_train, type = "response")
 
@@ -218,15 +115,6 @@ legend("right", legend = c("predicted >= 0.47",
        col = c("red", "blue"),  pch = c(1, 1),
        cex = 0.8,
        bg = "white")
-```
-
-As expected, we find that the decision boundary is indeed linear.
-
-### (e) Now fit a logistic regression model to the data using non-linear functions of $X_1$ and $X_2$ as predictors (e.g. $X^2_1$, $X_1 \times X_2$, log($X_2$), and so forth).
-
-We fit the model by using the `poly` function up to the third degree. We additionally include an interaction term. All variables a statistically significant.
-
-```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
 nonlinear_fit <- glm(y ~ poly(x1, 3, raw = TRUE) + poly(x2, 3, raw = TRUE)
                      + x1:x2,
                      family = binomial(link ="logit"),
@@ -234,15 +122,6 @@ nonlinear_fit <- glm(y ~ poly(x1, 3, raw = TRUE) + poly(x2, 3, raw = TRUE)
 
 
 select_vars <- step(nonlinear_fit, direction = "both")
-```
-
-Above we see that our final model selects the polynomial terms, which we will use in our prediction.
-
-### (f) Apply this model to the training data in order to obtain a predicted class label for each training observation. Plot the observations, colored according to the predicted class labels. The decision boundary should be obviously non-linear. If it is not, then repeat (a)-(e) until you come up with an example in which the predicted class labels are obviously non-linear.
-
-We use an ROC curve with an AUC of 0.92 to find the optimal cut-off for the predicted probabilities. We find that the naive cut-off of 0.5 is optimal. Below we see that the classification being used mimics the known theoretical non-linear decision boundary. Of course, we expected this as we used a polynomial to fit the data as the linear had poor performance.
-
-```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
 # Predict using just the cubic terms.
 pred <- predict(nonlinear_fit, type = "response")
 
@@ -264,13 +143,6 @@ legend("right", legend = c(expression(hat(P) >= 0.5),
        col = c("red", "blue"),  pch = c(1, 1),
        cex = 0.8,
        bg = "white")
-```
-
-
-
-### (g) Fit a support vector classifier to the data with $X_1$ and $X_2$ as predictors. Obtain a class prediction for each training observation. Plot the observations, colored according to the predicted class labels.
-
-```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
 # We rewrite the outcome as -1 or 1 as the book does.
 df2 <- df %>%
   mutate(y = ifelse(y == 1, 1, -1)) %>%
@@ -293,15 +165,6 @@ best_model <- costs$best.model
 
 # Plot using the best model on the training.
 plot(best_model, df2)
-```
-
-Above we fit a linear kernel with a cost of 1 and gamma of 0.05. We see, as expected, poor performance due to the linear fit. We should expect better performance on the training set when we fit a non-linear kernel.
-
-### (h) Fit a SVM using a non-linear kernel to the data. Obtain a class prediction for each training observation. Plot the observations, colored according to the predicted class labels.
-
-We begin by fitting a polynomial kernel with degree 3 (for consistency with out step result). We also perform 10-fold cross-validation tuning the cost and gamma. We find that a degree 2 polynomial with cost of 1 and gamma of 3 leads to the best performance.		
-
-```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5, warning = FALSE}
 # We fit a polynomial of degree 3 and 2, while tuning cost and gamma.
 tune_out <- tune(svm , y~ . , 
                  data = df2,
@@ -316,27 +179,7 @@ best_model <- costs$best.model
 
 
 plot(best_model, df2)
-```
-
-### (i) Comment on your results.
-
-We find that the support vectors in the polynomial kernel are along the decision boundary and relatively few are used. The classification performed by SVM is better than our attempt with a logistic model, but we chalk this performance up to the modeling attempt. Surely, more time and work would have found better estimates in the logistic model and had a similar performance.
-
-## JWHT. Chp 9 Question 7.
-
-### In this problem, you will use support vector approaches in order to predict whether a given car gets high or low gas mileage based on the `Auto` data set.
-
-```{r, echo = FALSE}
 df <- Auto
-```
-
-### (a) Create a binary variable that takes on a 1 for cars with gas mileage above the median, and a 0 for cars with gas mileage below the median.
-
-We begin by creating the outcome variable which we call `above_median`. We drop `mpg` as it would not make any sense to include it in the set of predictors - in fact, we should expect perfect prediction with its inclusion in the variable set.
-
-Additionally, we drop `name` for simplicity as it is very messy. We would expect that certain manufacturers and specifically, models, to perform better in terms of gas but we do not explore this feature here. Finally, we reassign `origin` as a factor; at present, it is imported as an integer variable, but as the increasing values are not meaningful, we believe it would not make sense to include `origin` as is in the variable set.
-
-```{r}
 # Create binary as stated above.
 df2 <- df %>%
   mutate(above_median = ifelse(mpg > median(df$mpg), 1, -1)) %>%
@@ -346,20 +189,7 @@ df2 <- df %>%
 
 sq<-glm(above_median~., data = df2, family = binomial)
 model <- step(sq,direction = "both", trace = 0)
-```
-
-Finally, we use a mixture or AIC selection and intuition to select features for inclusion in our models. We note that `displacement`, `horsepower`, `weight`, and `acceleration` are related to `mpg`. We also note that the covariates are linearly related. Our AIC model found `horsepower` and `weight`; overlayed with our pairs plot information, we commit to a model that includes `horsepower` and `weight`. Given that`displacement` and `acceleration` are linearly related to `horsepower` and `weight`, we find their inclusion in the model irrelevant. 
-
-```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=6.5}
 pairs(df, col = "darkblue")
-```
-
-
-### (b) Fit a support vector classifier to the data with various values of `cost`, in order to predict whether a car gets high or low gas mileage. Report the cross-validation errors associated with different values of this parameter. Comment on your results.
-
-We vary cost in a 10-fold cross-validation and find that a SVM with linear kernel and a cost of 1 has the best performance with an associated error of about 0.12. We use 120 support vectors.
-
-```{r, echo = FALSE}
 set.seed(14)
 tune_out <- tune(svm , above_median ~ horsepower + weight, 
                  data = df2,
@@ -376,14 +206,6 @@ kable(table, caption = "Performance for Linear Kernel",
       booktabs = TRUE, format = "latex") %>%
   kable_styling(latex_options=c("hold_position"))
 
-```
-
-
-### (c) Now repeat (b), this time using SVMs with radial and polynomial basis kernels, with different values of `gamma` and `degree` and `cost`. Comment on your results.
-
-We check quadratic and cubic polynomials with varying costs and gamma values. We find that a cubic polynomial with a cost of 47.9 has the best performance with an error of 0.14 and uses 145 support vectors.
-
-```{r, echo = FALSE}
 set.seed(14)
 tune_out <- tune(svm , above_median ~ horsepower + weight,  
                  data = df2,
@@ -403,11 +225,6 @@ rownames(table) <- NULL
 kable(table, caption = "Performance for Polynomial Kernel",
       booktabs = TRUE, format = "latex") %>%
   kable_styling(latex_options=c("hold_position"))
-```
-
-In the radial kernel setting, the 10-fold cross-validation find a that a cost of 11.42 and gamma of 3 has the optimal performance of 0.10 using 109 support vectors.
-
-```{r, echo = FALSE}
 set.seed(14)
 tune_out <- tune(svm , above_median ~ horsepower + weight, 
                  data = df2,
@@ -427,43 +244,19 @@ kable(table, caption = "Performance for Radial Kernel",
       booktabs = TRUE, format = "latex") %>%
   kable_styling(latex_options=c("hold_position"))
 
-```
-
-### (d) Make some plots to back up your assertions in (b) and (c).
-
-Below we see that the radial kernel has the best grasp of the distribution of low vs high mpg. Of course, linear and polynomial kernel are not far behind, but a detailed examination of the radial setting finds that the edge cases are being used as support vectors allows for better separation. Coupled with the lowest cross-validated error of 0.09, we are comforted in our choice of the radial kernel with cost of 11.42.
-
-```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=4.5}
 plot(best_linear_model, df2 , horsepower~weight)
 
 plot(best_poly_model, df2 , horsepower~weight)
 
 plot(best_radial_model, df2 , horsepower~weight)
 
-```
-
-
-## JWHT. Chp 9 Question 8.
-
-### This problem involves the `OJ` data set which is part of the `ISLR` package.
-
-```{r}
 # First we load in the data.
 df <- OJ
 
 names(df) <- tolower(names(df))
-```
-
-Before we begin, we note that `storeid` and `store` are stored as numeric but should be categorical. We make these changes on that data.
-
-```{r}
 df <- df %>%
   mutate(storeid = as.factor(storeid),
          store = as.factor(store))
-```
-### (a) Create a training set containing a random sample of 800 observations, and a test set containing the remaining observations.
-
-```{r}
 # We set a seed for reproducibility.
 set.seed(13)
 
@@ -475,13 +268,6 @@ train <- df[in_train, ]
 
 # Create the test set.
 test <- df[-in_train, ]
-```
-
-### (b) Fit a support vector classifier to the training data using $cost=0.01$, with `Purchase` as the response and the other variables as predictors. Use the `summary()` function to produce summary statistics, and describe the results obtained.
-
-In part (a), we have separated the data into training and test. Given that we require a gamma parameter, but have a given cost, we have performed 10-fold cross-validation on the 800 train set to find the optimal gamma. We found that without performing this, we achieve the same default gamma of 0.05.
-
-```{r, echo = FALSE}
 # Summary of the SVM.
 summary(svm(purchase ~ ., data = train, kernel = "linear",cost = 0.01))
 
@@ -498,13 +284,6 @@ costs <- summary(tune_out)
 
 # Grab the best model.
 best_model <- costs$best.model
-```
-
-We see above that 429 support vectors are used in the classification of CH and MM Purchase levels, of which, 215 are used for CH and 214 in MM. As mentioned, the gamma is found to be about 0.05.
-
-### (c) What are the training and test error rates?
-
-```{r , echo = FALSE}
 # First we grab the predictions using our best model for test.
 purchase_pre <- predict (best_model, test)
 
@@ -529,15 +308,6 @@ rownames(tables) <- NULL
 kable(tables, caption = "Error Rates with Fixed Cost, Optimized Gamma", booktabs = TRUE, format = "latex") %>%
   kable_styling(latex_options=c("hold_position"))
 
-```
-
-We have very similar results in error for training and testing suggesting stability in the model.
-
-### (d) Use the `tune()` function to select an optimal `cost`. Consider values in the range 0.01 to 10.
-
-Below we see that the optimal cost is set to 3.34 with the lowest error at 0.166 with 330 support vectors.
-
-```{r, echo = FALSE}
 set.seed(14)
 tune_out <- tune(svm , purchase~ . , 
                  data = train,
@@ -555,12 +325,6 @@ kable(table, caption = "Fixed Cost",
       booktabs = TRUE, format = "latex", digits = 4) %>%
   kable_styling(latex_options=c("hold_position"))
 
-```
-
-### (e) Compute the training and test error rates using this new value for `cost`.
-
-
-```{r , echo = FALSE}
 # First we grab the predictions using our best model for test.
 purchase_pre <- predict (best_model , test)
 
@@ -586,25 +350,11 @@ kable(tables, caption = "Error Rates with Optimal Cost",
       booktabs = TRUE, format = "latex") %>%
   kable_styling(latex_options=c("hold_position"))
 
-```
-
-From a completely numerical standpoint, we see that the train and test errors have remained about the same as the linear kernel with fixed cost but we find that we have leveraged less data for the SVM using 99 less support vectors after optimizing cost. We comment on the numerical standpoint because we have yet to evaluate the performance based on the features included.
-
-### (f) Repeat parts (b) through (e) using a support vector machine with a radial kernel. Use the default value for `gamma`.
-
-We begin by fitting an SVM with radial kernel with fixed cost at 0.01.
-
-```{r}
 set.seed(14)
 radial <- svm(purchase ~ ., 
               data = train,
               kernel = "radial",
               cost = 0.01)
-```
-
-In this case, we have used 636 support vectors with 320 in CH and 316 in MM. Our model has an error of 0.395.
-
-```{r, echo = FALSE}
 set.seed(14)
 tune_out <- tune(svm , purchase ~ ., 
                  data = train,
@@ -620,11 +370,6 @@ radial_model <- best_model
 kable(table, caption = "Performance for Radial Kernel",
       booktabs = TRUE, format = "latex") %>%
   kable_styling(latex_options=c("hold_position"))
-```
-
-The best model uses a cost of 1.12 and leverages 361 support vectors, nearly a 48\% reduction without optimizing cost. 
-
-```{r , echo = FALSE}
 # First we grab the predictions using our best model for test.
 purchase_pre <- predict (best_model, test)
 
@@ -672,26 +417,12 @@ tables <- rbind(table1, tables)
 kable(tables, caption = "Error Rates for Radial Kernel",
       booktabs = TRUE, format = "latex") %>%
   kable_styling(latex_options=c("hold_position"))
-```
-
-With fixed cost, our training versus error rate is high and nearly identical, with the training error rate slightly higher. We see a reduction of more than half the test error rate once we optimize the cost and set it to 8.89, a trend that is seen in the train error rate as well.
-
-### (g) Repeat parts (b) through (e) using a support vector machine with a polynomial kernel. Set `degree=2`.
-
-We begin by fitting an SVM with polynomial kernel with fixed cost at 0.01 and `degree=2`.
-
-```{r}
 set.seed(14)
 poly <- svm(purchase ~ ., 
               data = train,
               kernel = "poly",
               cost = 0.01,
               degree = 2)
-```
-
-In this case, we have used 638 support vectors with 322 in CH and 316 in MM. Our model has an error of 0.395.
-
-```{r, echo = FALSE}
 set.seed(14)
 tune_out <- tune(svm , purchase ~ ., 
                  data = train,
@@ -708,11 +439,6 @@ poly_model <- best_model
 kable(table, caption = "Performance for Radial Kernel",
       booktabs = TRUE, format = "latex") %>%
   kable_styling(latex_options=c("hold_position"))
-```
-
-The best model uses a cost of 8.89 and leverages 638 support vectors, more than a 50\% reduction without optimizing cost. 
-
-```{r , echo = FALSE}
 # First we grab the predictions using our best model for test.
 purchase_pre <- predict (best_model, test)
 
@@ -760,17 +486,4 @@ tables <- rbind(table1, tables)
 kable(tables, caption = "Error Rates for Radial Kernel",
       booktabs = TRUE, format = "latex") %>%
   kable_styling(latex_options=c("hold_position"))
-```
-
-With fixed cost, our training versus test error rate is high and nearly identical, with a slight decrease in the test error rate. We see a reduction of more about half the test error rate once we optimize the cost and set it to 8.89. 
-
-
-### (h) Overall, which approach seems to give the best results on this data?
-
-Examining the test error rate across the optimized models, we see that the linear kernel has the lowest error at about 0.16 while the radial and polynomial kernel are both around 0.2. From this perspective, the linear is performing optimally. If we plot pairs of features, we see that radial and polynomial kernel are consistently predicting entirely in the direction of MM or CH. We do not include those plots as they are not informative. Forced to choose a model, we would suggest the linear kernel but we caution that there is a better model. Consider that in the polynomial setting we had not tested varying degrees or gamma values. We had the same deficit in the radial setting by not testing varying gamma values. Although we excluded the plots, there was extreme overlap in the data points, suggesting we had not found the features that would allow us to find some separability in the data.
-
-
-# Code Appendix
-
-```{r code = readLines(knitr::purl("C:/Users/jcochanc/Documents/Big-Data/Homework/hw2.Rmd", documentation = 0)), eval = FALSE}
-```
+## NA
