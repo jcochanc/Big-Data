@@ -5,12 +5,16 @@ date:  "`r format(Sys.time(), '%B %d, %Y')`"
 output: pdf_document
 ---
 
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.pos = 'H')
+```
 
 ```{r, echo = FALSE}
 # Libraries.
-pacman::p_load(dplyr, kableExtra, knitr, ggplot2, 
-               ISLR, caret, scatterplot3d, rgl, calibrate, plotrix,
-               pROC, e1071, usdm)
+pacman::p_load(dplyr, kableExtra, knitr,  
+               ISLR, caret, tree, rpart,
+               rpart.plot, randomForest,
+               MASS, gbm)
 ```
 
 
@@ -23,73 +27,428 @@ Book “An Introduction to Statistical Learning” by James G, Witten D, Hastie 
 
 ### Consider the Gini index, classification error, and cross-entropy in a simple classification setting with two classes. Create a single plot that displays each of these quantities as a function of $\hat{p}_{m1}$. The $x$-axis should display $\hat{p}_{m1}$, ranging from 0 to 1, and the y-axis should display the value of the Gini index, classification error, and entropy.
 
+Recall that the Gini Index is defined with $K = 2$:
+
+$$ G = \sum_{k = 1}^2\hat{p}_{mk}(1- \hat{p}_{mk}) = 2\hat{p}_{m1}(1-\hat{p}_{m1}) $$
+
+Classification error: 
+
+$$ E = 1- \max_{k}(\hat{p}_{mk}) =  1-\max_{k}(\hat{p}_{m1}, 1-\hat{p}_{m1})$$
+
+Cross-entropy:
+
+$$ D  = - \sum_{k=1}^K \hat{p}_{mk} \log{\hat{p}_{mk}} =   - (\hat{p}_{m1} \log{\hat{p}_{m1}}) -  (1-\hat{p}_{m1})(\log{1-\hat{p}_{m1}})$$ 
+where $\hat{p}_{mk}$ represents the proportion of training observations in the $m^{th}$ region that are from the $k^{th}$ class.
+
+```{r, fig.align = "center", fig.asp = .78, fig.width=4.5, warning = FALSE}
+p_m1 <- seq(0.01, 1, length.out = 1000)
+
+# Gini index:
+gini_index <- 2 * p_m1 * (1-p_m1)
+
+# Error:
+error <- 1-pmax(p_m1, 1-p_m1)
+
+# Cross-entropy:
+ce <- -p_m1*log(p_m1)-(1-p_m1)*log(1-p_m1)
+
+plot(p_m1, ce, type = "l", col = "red", ylab = "Impurity",
+     xlab = "P", main = "Comparison of indices and 
+     Information impurity for two groups")
+points(p_m1, error, type = "l", col = "blue")
+points(p_m1, gini_index, type = "l", col = "green")
+legend("bottom", legend = c("Cross-entropy", 
+                            "Classification Error", 
+                            "Gini Index"), 
+       lty = c(1, 1, 1), col = c("red", "blue", "green"),
+       cex = 0.5)
+```
 ### Hint: In a setting with two classes, $\hat{p}_{m1} = 1 - \hat{p}_{m2}$ You could make this plot by hand, but it will be much easier to make in  \textcolor{red}{R}.
 
+
 ### Also, comment on the similarity and difference among the three loss functions, and what that implies on model training. 
+
+Discliamer: The comments are for $K=2$.
+
+We see that all three loss functions are maximized at 0.5 which follows natrually using optimization. We across values of $\hat{p}_{m1}$, the index values are cross-entropy > gini-index $\geq$ classification error, suggestion the utility of cross entropy.
 
 ## JWHT. Chp 8 Question 4.
 
 ### This question relates to the plots in Figure 8.12.
 
-![](C:/Users/jcochanc/Documents/Big-Data/Homework/fig8_12.png)
+
+![](C:/Users/jcochanc/Documents/Big-Data/Homework/fig8_12.png)\
+
 
 ### (a) Sketch the tree corresponding to the partition of the predictor space illustrated in the left-hand panel of Figure 8.12. The numbers inside the boxes indicate the mean of $Y$ within each region.
 
+![](C:/Users/jcochanc/Documents/Big-Data/Homework/8_4_a.png)\
+
+
 ### (b) Create a diagram similar to the left-hand panel of Figure 8.12, using the tree illustrated in the right-hand panel of the same figure. You should divide up the predictor space into the correct regions, and indicate the mean for each region.
+
+![](C:/Users/jcochanc/Documents/Big-Data/Homework/8_4_b.png)\
+
 
 ## JWHT. Chp 8 Question 5.
 
-### Suppose we produce ten bootstrapped samples from a data set containing red and green classes. We then apply a classification tree to each bootstrapped sample and, for a specific value of $X$, produce 10 estimates of $P(\text{Class is Red}|X):
+### Suppose we produce ten bootstrapped samples from a data set containing red and green classes. We then apply a classification tree to each bootstrapped sample and, for a specific value of $X$, produce 10 estimates of $P(\text{Class is Red}|X)$:
 
 $$0.1, 0.15, 0.2, 0.2, 0.55, 0.6, 0.6, 0.65, 0.7, \text{and } 0.75.$$
 
+```{r}
+# Input sample probs.
+probs <- c(0.1, 0.15, 0.2, 0.2, 0.55, 
+             0.6, 0.6, 0.65, 0.7, 0.75)
+
+# Number greater than 0.5:
+sum(probs > 0.50)
+
+# Mean of probabilties:
+mean(probs)
+```
+
 ### There are two common ways to combine these results together into a single class prediction. One is the majority vote approach discussed in this chapter. The second approach is to classify based on the average probability. In this example, what is the final classification under each of these two approaches?
+
+Recall: For a given test observation, we can record the class predicted by each of the B trees, and take a majority vote: the overall prediction is the most commonly occurring majority class among the B predictions.
+
+Then applying majority, we see that there are 6 probabilities greater than a 0.5 cut-off suggesting majority would favor a Red classification.
+
+Using the average probability, we have $p_{avg} = 0.45$ suggesting we classify green.
 
 ## JWHT. Chp 8 Question 7.
 
 ### In the lab, we applied random forests to the \textcolor{red}{Boston} data using \textcolor{red}{mtry=6} and using \textcolor{red}{ntree=25} and \textcolor{red}{ntree=500}. Create a plot displaying the test error resulting from random forests on this data set for a more comprehensive range of values for \textcolor{red}{mtry} and \textcolor{red}{ntree}. You can model your plot after Figure \textcolor{red}{8.10}. Describe the results obtained.
 
-![](C:/Users/jcochanc/Documents/Big-Data/Homework/fig8_10.png)
+![](C:/Users/jcochanc/Documents/Big-Data/Homework/fig8_10.png)\
 
+
+```{r}
+# Bring in the data.
+df <- Boston
+
+set.seed(21)
+
+# We take 80% of our sample.
+train_set <- sample(1:nrow(df), 0.8*nrow(df))
+
+# Allocate 80% to train and 20% to test.
+train <- df[train_set,]
+
+test <- df[-train_set,]
+
+# Number of predictors:
+p <- ncol(df) - 1
+
+# We use the three values of mtry used in figure:
+mtry_values <- c(p, ceiling(p/2), ceiling(sqrt(p)))
+
+# Span the ntree values:
+ntree_values <- seq(10, 500, 10)
+
+# Initialize a matrix to store results.
+values_mat <- array(dim = c(length(ntree_values), length(mtry_values)))
+
+for(j in 1:length(mtry_values)){
+  for(i in 1:length(ntree_values)){
+    rf_model <- randomForest(medv ~ ., data = train,
+                             mtry = mtry_values[j],
+                             ntree = ntree_values[i])
+      
+    # Predict on the test data.
+    predicted_sales <- predict(rf_model, newdata = test)
+    
+    # MSE.
+    values_mat[i, j] <- mean((predicted_sales - test$medv)^2)
+  }
+}
+
+
+cols <- c("orange","blue","green")
+mtry_names <- c(expression(p), expression(p/2), expression(sqrt(p)))
+plot(ntree_values, (values_mat[,3]), xlab="Number of trees",ylab="Test MSE",col=cols[3],type='l', ylim = c(6, 10))
+lines(ntree_values,values_mat[,1],col=cols[1]) 
+lines(ntree_values,values_mat[,2],col=cols[2])
+legend("topright",mtry_names,lty = 1,col=cols, cex = 0.75)
+
+```
+
+Overall, we see optimal performance for mtry set to p, which is the bagging setting of random forest and most mtry settings have stability after 200 trees are grown.
 
 ## JWHT. Chp 8 Question 8 (Regression tree; RF) .
 
 ### In the lab, a classification tree was applied to the \textcolor{red}{Carseats} data set after converting \textcolor{red}{Sales} into a qualitative response variable. Now we will seek to predict \textcolor{red}{Sales} using regression trees and related approaches, treating the response as a quantitative variable.
 
+```{r}
+# Load in data.
+df <- Carseats
+```
+
 ### (a) Split the data set into a training set and a test set.
+
+```{r}
+# We set a seed.
+set.seed(14)
+
+# We take 80% of our sample.
+train_set <- sample(1:nrow(df), 0.8*nrow(df))
+
+# Allocate 80% to train and 20% to test.
+train <- df[train_set,]
+
+test <- df[-train_set,]
+```
 
 ### (b) Fit a regression tree to the training set. Plot the tree, and interpret the results. What test MSE do you obtain?
 
+```{r}
+# Build the model on the training.
+tree_model <- rpart(Sales ~ ., data = train)
+
+# Plot of the tree.
+rpart.plot::rpart.plot(tree_model)
+```
+
+Our tree begins by examining the average Sales for the total training set, 7.6 (in thousands). The biggest split occurs in separating the Shelving Location quality into Good and those that were not good, i.e. bad or medium. This splits the training data into 22%\ and 78\%, each have Sales average of 10 and 6.8 respectively. Continuing in this manner, the rest of the tree is interpretable after accounting for splits using prices for car seats at sites, average age of the population near site, whether the site is in the US or not, and the competitors pricing.
+
+```{r}
+# Predict on the test data.
+predicted_sales <- predict(tree_model, newdata = test)
+
+# MSE.
+mean((predicted_sales - test$Sales)^2)
+```
+
+For continuous outcome Sales (in thousands), we find of the 10 variables included, a tree selects ShelveLoc, Price, Age, US, and CompPrice. On the held out data, our model has an MSE of $6.42 \times 10^3$ suggesting this model leads to test predictions that are within ~$2534 of the true mean Sales.
+
 ### (c) Use cross-validation in order to determine the optimal level of tree complexity. Does pruning the tree improve the test MSE?
+
+We begin by discussing the goals of this question. Cross-validating our model will optimize on the on the smallest deviance by default which has an associated $k$ cost-complexity parameter. We remind the reader that the smaller the deviance, the better the fit to the training data. It follows then that we should not necessarily expect our MSE to improve as our cross-validation has not attempted to minimize the MSE. In fact, the more we overfit our data, the less we should expect optimal performance on the held out data. 
+
+```{r, fig.align = "center", fig.asp = .78, fig.width=5.5, warning = FALSE}
+set.seed(14)
+
+# We rerun the model using tree() so cv.tree can be used.
+tree_model <- tree(Sales ~ ., data = train)
+
+# Cross-validate.
+tree_model_cv <- cv.tree(tree_model)
+
+# Plot the k associated with min dev.
+plot(tree_model_cv$k, tree_model_cv$dev, type="b",
+     xlab = "Complexity", ylab = "Deviance")
+min_dev_index <- which.min(tree_model_cv$dev)
+points(tree_model_cv$k[min_dev_index],
+       tree_model_cv$dev[min_dev_index],
+       col = "red", cex = 2, pch = 20)
+```
+
+The minimum deviance is about 1308 with an associated complexity of ~37.74. Updating our model to the associated size of 10 gives an MSE of 6.23, which is a marginal decrease and test predictions that are within ~$2496 of the true mean Sales.
+
+```{r}
+# Update the size.
+updated_tree <- prune.tree(tree_model ,best = 10)
+
+# Predict on the test data.
+predicted_sales <- predict(updated_tree, newdata = test)
+
+# MSE.
+mean((predicted_sales - test$Sales)^2)
+```
+
 
 ### (d) Use the bagging approach in order to analyze this data. What test MSE do you obtain? Use the \textcolor{red}{importance()} function to determine which variables are most important.
 
+```{r}
+# We set the number of predictors for mtry.
+p <- ncol(train)-1
+
+# Use bagging with the default ntree.
+bagging_model <- randomForest(Sales ~ ., data = train, 
+                              mtry = p, importance = TRUE)
+
+
+# Predict on the test data.
+predicted_sales <- predict(bagging_model, newdata = test)
+
+# MSE.
+mean((predicted_sales - test$Sales)^2)
+```
+
+We see that a bagging approach that considers all ten variables as candidates at each split and grows 500 trees has a significant reduction in MSE = 2.96 and associated test predictions within ~$1722 of the true average mean Sales. Using the importance() function, we see that Selving location and price drive sales.
+
+```{r, echo = FALSE}
+imp_var <- as.data.frame(importance(bagging_model))
+kable(imp_var[order(imp_var$`%IncMSE`, decreasing = TRUE),], digits = 2,
+       booktabs = TRUE, format = "latex") %>%
+  kable_styling(latex_options=c("hold_position"))
+```
+
+
 ### (e) Use random forests to analyze this data. What test MSE do you obtain? Use the \textcolor{red}{importance()} function to determine which variables are most important. Describe the effect of $m$, the number of variables considered at each split, on the error rate obtained.
+
+We begin by addressing the concern of the effect of $m$ on the error. Default mtry is set to $p/3$ which in our case would be set to three variables. Rather than run the initial model, we choose to perform an initial tune on mtry. We use the built-in tuneRF() and below find that the optimal mtry is set to 6. Of course, we have not directly addressed the effect on error rate, rather the out-of-bag error (OOB), but find that this comparison is reasonable. A later comparison discusses two choices of mtry (optimal vs. default). 
+
+```{r, fig.align = "center", fig.asp = .78, fig.width=5.5, warning = FALSE}
+# names of features
+features <- setdiff(names(train), "Sales")
+
+set.seed(14)
+
+m_try <- tuneRF(x = train[features], y = train$Sales,
+              ntreeTry = 500, mtryStart  = 3,
+              stepFactor = 1.5, improve = 0.01,
+              trace = FALSE)
+```
+
+
+Having set $mtry = 6$, we model a random forest on the data. Below we see a simlar MSE (2.959) relative to the bagging model and overall a decrease compared to a regression tree. We mention that a default random forest with mtry=3 performs marginally poorer (MSE = 3.18).
+
+```{r}
+set.seed(14)
+# Use random forest with the default ntree.
+rf_model <- randomForest(Sales ~ ., data = train, mtry = 6,
+                         importance = TRUE)
+
+
+# Predict on the test data.
+predicted_sales <- predict(rf_model, newdata = test)
+
+# MSE.
+mean((predicted_sales - test$Sales)^2)
+```
+
+Finally, we see that our random forest also finds price and shelve location as important predictors albeit their order is switched.
+
+```{r, echo = FALSE}
+imp_var <- as.data.frame(importance(rf_model))
+kable(imp_var[order(imp_var$`%IncMSE`, decreasing = TRUE),], digits = 2,
+       booktabs = TRUE, format = "latex") %>%
+  kable_styling(latex_options=c("hold_position"))
+```
 
 ## JWHT. Chp 8 Question 9 (Classification tree).
 ### This problem involves the \textcolor{red}{OJ} data set which is part of the \textcolor{red}{ISLR} package.
 
 ### (a) Create a training set containing a random sample of 800 observations, and a test set containing the remaining observations.
 
-### (b) Fit a tree to the training data, with \textcolor{red}{Purchase} as the response and the other variables except for \textcolor{red}{Buy} as predictors. Use the \textcolor{red}{summary()} function to produce summary statistics about the tree, and describe the results obtained. What is the training error rate? How many terminal nodes does the tree have?
+```{r}
+# Load in OJ data.
+df <- OJ
+
+# Create a training set of 800 obs.
+set.seed(14)
+train_set <- sample(1:nrow(df), 800)
+
+# Allocate to train and 20% to test.
+train <- df[train_set,]
+
+test <- df[-train_set,]
+```
+
+### (b) Fit a tree to the training data, with \textcolor{red}{Purchase} as the response and the other variables except for \textcolor{red}{Buy} as predictors. 
+
+```{r}
+# Fit the tree.
+set.seed(14)
+tree_model <- tree(Purchase ~ ., data = train)
+```
+
+### Use the \textcolor{red}{summary()} function to produce summary statistics about the tree, and describe the results obtained. What is the training error rate? How many terminal nodes does the tree have?
+
+Below we see that five variables are included in the tree construction: LoyalCH, SalePriceMM, SpecialCH, PriceDiff, and ListPriceDiff. The tree is constructed with 9 terminal nodes, a residual mean deviance of ~0.77 and misclassification rate ~0.16.
+
+```{r}
+summary(tree_model)
+```
+
+
 
 ### (c) Type in the name of the tree object in order to get a detailed text output. Pick one of the terminal nodes, and interpret the information displayed.
 
+We begin with the top level (root) and go on to discuss the second split. At root, we have 800 observations with an associated deviance of 1077, and 60\% CH, 40\% MM. Then using a LoyalCH cut-off of 0.48, those with a value less than this cut-off are predicted MM, CH otherwise with ~76\% of the training observations in this branch.
+
+
+```{r}
+tree_model
+```
 ### (d) Create a plot of the tree, and interpret the results.
+
+
+```{r, echo = FALSE, fig.align = "center", fig.asp = .78, fig.width=5.5}
+# Fit the tree.
+set.seed(14)
+tree_model <- rpart(Purchase ~ ., data = train)
+rpart.plot(tree_model)
+tree_model <- tree(Purchase ~ ., data = train)
+```
+
+Above we find our tree predicting purchase. We may interpret that as follows: for any given observation with a LoyalCh value of less than 0.45, you are predicted to purchase MM; otherwise you are predicted to purchase CM if you have a LoyalCH value greater than or equal to 0.71. Otherwise for values of LoyalCh between 0.45 and 0.71, we condition on ListPriceDiff and for observations with a ListPriceDiff greater than or equal to 0.24, you are predicted to purchase CH, otherwise CH is predicted conditioned on a value greater than PctDiscCH greater than or equal to 0.052 else MM is predicted.
 
 ### (e) Predict the response on the test data, and produce a confusion matrix comparing the test labels to the predicted test labels. What is the test error rate?
 
+```{r}
+# Predict on the test data.
+predicted_purchase <- predict(tree_model, newdata = test, type = "class")
+
+# Confusion matrix.
+table(Predicted = predicted_purchase, Actual = test$Purchase)
+
+# Error rate.
+1- (153 + 74)/270
+```
+
 ### (f) Apply the \textcolor{red}{cv.tree()} function to the training set in order to determine the optimal tree size.
+
+Below we see the optimal tree size is any value of 5, 6, or 7. 
+
+```{r, echo = FALSE, fig.align = "center", fig.asp = .78, fig.width=5}
+cv_tree <- cv.tree(tree_model, FUN = prune.misclass )
+plot(cv_tree)
+```
 
 ### (g) Produce a plot with tree size on the x-axis and cross-validated classification error rate on the y-axis.
 
+```{r, echo = FALSE, fig.align = "center", fig.asp = .78, fig.width=5}
+plot(cv_tree$size ,cv_tree$dev ,type="b", ylab = "Classification Error",
+     xlab = "Tree Size")
+min_dev_index <- which.min(cv_tree$dev)
+points(cv_tree$size[min_dev_index],
+       cv_tree$dev[min_dev_index],
+       col = "red", cex = 2, pch = 20)
+```
+
 ### (h) Which tree size corresponds to the lowest cross-validated classification error rate?
 
-### (i) Produce a pruned tree corresponding to the optimal tree size obtained using cross-validation. If cross-validation does not leadto selection of a pruned tree, then create a pruned tree with five terminal nodes.
+Above we see that a tree of size 5 is associated with the lowest cross-validated error.
+
+### (i) Produce a pruned tree corresponding to the optimal tree size obtained using cross-validation. If cross-validation does not lead to selection of a pruned tree, then create a pruned tree with five terminal nodes.
+
+Below we see that a pruned tree is indeed created with five terminal nodes. 
+
+```{r}
+pruned_tree <- prune.misclass(tree_model, best = 5)
+summary(pruned_tree)
+```
 
 ### (j) Compare the training error rates between the pruned and unpruned trees. Which is higher?
 
+We find that the misclassification error rate is increased marginally in the prunned tree which is an acceptable cost when regarding the reduction of leveraged information i.e. less variables used.
+
 ### (k) Compare the test error rates between the pruned and unpruned trees. Which is higher?
+
+We find that the error rate is now 17\% for the pruned tree which is only a 1\% compared to our initial model.
+
+```{r}
+# Predict on the test data.
+predicted_purchase <- predict(pruned_tree, newdata = test, type = "class")
+
+# Confusion matrix.
+table(Predicted = predicted_purchase, Actual = test$Purchase)
+
+# Error rate.
+1- (140 + 84)/270
+```
 
 ## JWHT. Chp 8 Question 11.
 
@@ -97,9 +456,84 @@ $$0.1, 0.15, 0.2, 0.2, 0.55, 0.6, 0.6, 0.65, 0.7, \text{and } 0.75.$$
 
 ### (a) Create a training set consisting of the first 1,000 observations, and a test set consisting of the remaining observations.
 
+```{r}
+# Load in Caravan data.
+df <- Caravan
+
+# Form the data for gbm.
+df <- df %>%
+  mutate(purchase = ifelse(Purchase == "Yes", 1, 0)) %>%
+  dplyr::select(-Purchase)
+
+# Remove near zero or zero-variance predictors.
+nzv <- nearZeroVar(df)
+df <- df[,-nzv]
+
+# Create a training set of first 1000 obs.
+train_set <- 1:1000
+
+# Allocate to train and 20% to test.
+train <- df[train_set,]
+
+test <- df[-train_set,]
+```
+
 ### (b) Fit a boosting model to the training set with \textcolor{red}{Purchase} as the response and the other variables as predictors. Use 1,000 trees, and a shrinkage value of 0.01. Which predictors appear to be the most important?
 
-### (c) Use the boosting model to predict the response on the test data. Predict that a person will make a purchase if the estimated probability of purchase is greater than 20\%. Form a confusion matrix. What fraction of the people predicted to make a purchase do in fact make one? How does this compare with the results obtained from applying KNN or logistic regression to this data set? 
+```{r, echo = FALSE}
+# Use boosting with 1000 trees and 0.01 shrinkage.
+boosting_model <- gbm(purchase ~ ., data = train, 
+                              distribution = "bernoulli",
+                              n.trees = 5000, shrinkage = 0.01)
+
+influence_table <- summary(boosting_model, plotit = FALSE)[1:10,]
+
+influence_table <- subset.data.frame(influence_table, select = rel.inf)
+
+kable(influence_table, digits = 2,
+       booktabs = TRUE, format = "latex", 
+      caption = "Relative Influence of top 10 Variables") %>%
+  kable_styling(latex_options=c("hold_position"))
+```
+
+### (c) Use the boosting model to predict the response on the test data. Predict that a person will make a purchase if the estimated probability of purchase is greater than 20\%.
+
+```{r}
+purchase_predicted <- predict(boosting_model, newdata = test,
+                              type = "response",
+                              n.trees = 5000, shrinkage = 0.01)
+
+purchase_predicted <- ifelse(purchase_predicted > 0.2, 1, 0)
+```
+
+### Form a confusion matrix. What fraction of the people predicted to make a purchase do in fact make one? 
+
+Below a confusion matrix of the predictions as made by the specified 0.2 cut-off. The question related to the fraction predicted is a wordy ask. We interpret the question to refer to the Positive Predicted Value which in this case is 13\% $\sim \dfrac{43}{43+273}$
+
+```{r}
+table(Predicted = purchase_predicted, Actual = test$purchase)
+
+```
+
+### How does this compare with the results obtained from applying KNN or logistic regression to this data set?
 
 ### NOTE: Compare the boosting method with logistic regression.
+
+
+Below a confusion matrix of the predictions as made by the specified 0.2 cut-off using logistic regression. Again, we interpret the question to refer to the Positive Predicted Value which in this case is 15\% $\sim \dfrac{44}{44+254}$. 
+
+\textbf{NOTE:} I take issue with the wording of the question. To make a fair comparison in using the logistic model, we should be using an optimal cut-off and not the 0.20 specified by the problem. Moreover, our logistic model may perform even better if we take a moment to examine the relationship of the covariates included. In the boosted setting, we are allowing all variables in, although there was a preliminary cleaning where zero and near-zero variance variables were removed. In this comparative setting, we aren't allow for the logistic model to be tuned in any way. In the end, the logistic is performing marginally better but as can be seen by the confusion matrix, it is due to the  decrease false-positives. Finally, if our concern is to examine those that do purchase, it would be best to optimize for the positive predictions.
+
+```{r}
+logit_model <- glm(purchase ~ ., data = train,
+                   family = binomial(link = "logit"))
+
+purchase_predicted <- predict(logit_model, newdata = test,
+                              type = "response")
+
+purchase_predicted <- ifelse(purchase_predicted > 0.2, 1, 0)
+
+table(Predicted = purchase_predicted, Actual = test$purchase)
+
+```
 
