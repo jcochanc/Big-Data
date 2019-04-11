@@ -1,0 +1,105 @@
+---
+title: "Homework 3"
+author: "Jerson R. Cochancela"
+date:  "`r format(Sys.time(), '%B %d, %Y')`"
+output: pdf_document
+---
+
+
+```{r, echo = FALSE}
+# Libraries.
+pacman::p_load(dplyr, kableExtra, knitr, ggplot2, 
+               ISLR, caret, scatterplot3d, rgl, calibrate, plotrix,
+               pROC, e1071, usdm)
+```
+
+
+Book “An Introduction to Statistical Learning” by James G, Witten D, Hastie T, and Tibshirani (JWHT)
+
+------------
+
+
+## JWHT. Chp 8 Question 3.
+
+### Consider the Gini index, classification error, and cross-entropy in a simple classification setting with two classes. Create a single plot that displays each of these quantities as a function of $\hat{p}_{m1}$. The $x$-axis should display $\hat{p}_{m1}$, ranging from 0 to 1, and the y-axis should display the value of the Gini index, classification error, and entropy.
+
+### Hint: In a setting with two classes, $\hat{p}_{m1} = 1 - \hat{p}_{m2}$ You could make this plot by hand, but it will be much easier to make in  \textcolor{red}{R}.
+
+### Also, comment on the similarity and difference among the three loss functions, and what that implies on model training. 
+
+## JWHT. Chp 8 Question 4.
+
+### This question relates to the plots in Figure 8.12.
+
+![](C:/Users/jcochanc/Documents/Big-Data/Homework/fig8_12.png)
+
+### (a) Sketch the tree corresponding to the partition of the predictor space illustrated in the left-hand panel of Figure 8.12. The numbers inside the boxes indicate the mean of $Y$ within each region.
+
+### (b) Create a diagram similar to the left-hand panel of Figure 8.12, using the tree illustrated in the right-hand panel of the same figure. You should divide up the predictor space into the correct regions, and indicate the mean for each region.
+
+## JWHT. Chp 8 Question 5.
+
+### Suppose we produce ten bootstrapped samples from a data set containing red and green classes. We then apply a classification tree to each bootstrapped sample and, for a specific value of $X$, produce 10 estimates of $P(\text{Class is Red}|X):
+
+$$0.1, 0.15, 0.2, 0.2, 0.55, 0.6, 0.6, 0.65, 0.7, \text{and } 0.75.$$
+
+### There are two common ways to combine these results together into a single class prediction. One is the majority vote approach discussed in this chapter. The second approach is to classify based on the average probability. In this example, what is the final classification under each of these two approaches?
+
+## JWHT. Chp 8 Question 7.
+
+### In the lab, we applied random forests to the \textcolor{red}{Boston} data using \textcolor{red}{mtry=6} and using \textcolor{red}{ntree=25} and \textcolor{red}{ntree=500}. Create a plot displaying the test error resulting from random forests on this data set for a more comprehensive range of values for \textcolor{red}{mtry} and \textcolor{red}{ntree}. You can model your plot after Figure \textcolor{red}{8.10}. Describe the results obtained.
+
+![](C:/Users/jcochanc/Documents/Big-Data/Homework/fig8_10.png)
+
+
+## JWHT. Chp 8 Question 8 (Regression tree; RF) .
+
+### In the lab, a classification tree was applied to the \textcolor{red}{Carseats} data set after converting \textcolor{red}{Sales} into a qualitative response variable. Now we will seek to predict \textcolor{red}{Sales} using regression trees and related approaches, treating the response as a quantitative variable.
+
+### (a) Split the data set into a training set and a test set.
+
+### (b) Fit a regression tree to the training set. Plot the tree, and interpret the results. What test MSE do you obtain?
+
+### (c) Use cross-validation in order to determine the optimal level of tree complexity. Does pruning the tree improve the test MSE?
+
+### (d) Use the bagging approach in order to analyze this data. What test MSE do you obtain? Use the \textcolor{red}{importance()} function to determine which variables are most important.
+
+### (e) Use random forests to analyze this data. What test MSE do you obtain? Use the \textcolor{red}{importance()} function to determine which variables are most important. Describe the effect of $m$, the number of variables considered at each split, on the error rate obtained.
+
+## JWHT. Chp 8 Question 9 (Classification tree).
+### This problem involves the \textcolor{red}{OJ} data set which is part of the \textcolor{red}{ISLR} package.
+
+### (a) Create a training set containing a random sample of 800 observations, and a test set containing the remaining observations.
+
+### (b) Fit a tree to the training data, with \textcolor{red}{Purchase} as the response and the other variables except for \textcolor{red}{Buy} as predictors. Use the \textcolor{red}{summary()} function to produce summary statistics about the tree, and describe the results obtained. What is the training error rate? How many terminal nodes does the tree have?
+
+### (c) Type in the name of the tree object in order to get a detailed text output. Pick one of the terminal nodes, and interpret the information displayed.
+
+### (d) Create a plot of the tree, and interpret the results.
+
+### (e) Predict the response on the test data, and produce a confusion matrix comparing the test labels to the predicted test labels. What is the test error rate?
+
+### (f) Apply the \textcolor{red}{cv.tree()} function to the training set in order to determine the optimal tree size.
+
+### (g) Produce a plot with tree size on the x-axis and cross-validated classification error rate on the y-axis.
+
+### (h) Which tree size corresponds to the lowest cross-validated classification error rate?
+
+### (i) Produce a pruned tree corresponding to the optimal tree size obtained using cross-validation. If cross-validation does not leadto selection of a pruned tree, then create a pruned tree with five terminal nodes.
+
+### (j) Compare the training error rates between the pruned and unpruned trees. Which is higher?
+
+### (k) Compare the test error rates between the pruned and unpruned trees. Which is higher?
+
+## JWHT. Chp 8 Question 11.
+
+### This question uses the Caravan data set.
+
+### (a) Create a training set consisting of the first 1,000 observations, and a test set consisting of the remaining observations.
+
+### (b) Fit a boosting model to the training set with \textcolor{red}{Purchase} as the response and the other variables as predictors. Use 1,000 trees, and a shrinkage value of 0.01. Which predictors appear to be the most important?
+
+### (c) Use the boosting model to predict the response on the test data. Predict that a person will make a purchase if the estimated probability of purchase is greater than 20\%. Form a confusion matrix. What fraction of the people predicted to make a purchase do in fact make one? How does this compare with the results obtained from applying KNN or logistic regression to this data set? 
+
+### NOTE: Compare the boosting method with logistic regression.
+
