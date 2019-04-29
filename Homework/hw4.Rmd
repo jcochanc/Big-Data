@@ -1,0 +1,890 @@
+---
+title: "Homework 4"
+author: "Jerson R. Cochancela"
+date:  "`r format(Sys.time(), '%B %d, %Y')`"
+output: pdf_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.pos = 'H')
+```
+
+```{r, echo = FALSE}
+# Libraries.
+pacman::p_load(dplyr, kableExtra, knitr,  
+               ISLR, caret, tree, rpart,
+               rpart.plot, randomForest,
+               MASS, gbm, adabag, xgboost,
+               class)
+```
+
+
+Book “An Introduction to Statistical Learning” by James G, Witten D, Hastie T, and Tibshirani (JWHT)
+
+------------
+
+
+## Q1. Develop an AdaBoost classifier for the following toy data example by hand. 
+
+```{r, echo = FALSE}
+# Read in data.
+q1_mat <- readRDS("C:/Users/jcochanc/Documents/Big-Data/Homework/hw4_q1_mat.RDS")
+
+# Rename columns.
+colnames(q1_mat) <- c("Y", "X1", "X2")
+
+
+# Print to screen.
+kable(q1_mat, booktabs = TRUE) %>%
+  kable_styling(latex_options=c("hold_position"))
+```
+
+
+### Consider only adding a stump tree with a single split on $X_1$ or $X_2$ for each iteration, where the split can only be made at 0, 2, or 4.
+
+### 1) Show the results of weights, “voting” powers, and errors in a table for the first three iterations. 
+
+```{r, echo = FALSE}
+q1_mat <- as.data.frame(q1_mat)
+q1_mat$Y <- ifelse(q1_mat$Y >0, 1, -1)
+
+set.seed(2214)
+
+# Initialize n.
+n <- nrow(q1_mat)
+
+# Initialize weights.
+weights <- 1/n
+
+# Initialize splitting possibility
+splits <- c(0, 2, 4)
+
+# Stumps
+# Pick a stump.
+pick_stump_2 <- sample(0:1, 1)
+
+# Sample a split for either X1 or X2.
+x1_stump <- sample(splits, 1)
+x2_stump <- sample(splits, 1)
+
+# Compute the cutoff.
+cutoff <- x1_stump*(1-pick_stump_2) + pick_stump_2*x2_stump
+
+# Compute h_t
+if(pick_stump_2 == 0){
+  # If we pick X1, then find if our observed value
+  # is below or above the cutoff.
+  h_t <- q1_mat$X1 > cutoff
+}else{
+  # Otherwise if we pick X2, check our observed values
+  # against this cutoff.
+    h_t <- q1_mat$X2 > cutoff
+}
+
+h_t <- ifelse(h_t == TRUE, 1, -1)
+
+# Errors function
+errors <- sum(weights * (q1_mat$Y != h_t))
+
+# Voting weight of h_t:
+alpha_t <- 0.5*log(1/errors -1)
+
+# Results of weight, or the recomputed weights.
+updated_weights <- weights*exp(-alpha_t * q1_mat$Y * h_t )
+Z_t <- sum(updated_weights)
+ 
+updated_weights <- updated_weights/Z_t
+
+q1_mat_addition <- array(dim = c(5, 3*3))
+
+# Weights
+q1_mat_addition[, 1] <- rep(weights, 5)
+
+# Voting power
+q1_mat_addition[, 2] <- rep(alpha_t, 5)
+
+# Error
+q1_mat_addition[, 3] <- rep(errors, 5)
+
+weights <- updated_weights
+
+pick_x2 <- c()
+cuts <- c()
+predictions <- array(dim = c(5, 3))
+
+pick_x2[1] <- pick_stump_2
+cuts[1] <- cutoff
+predictions[,1] <- h_t
+val <- c(3,6)
+
+for(i in  val){
+  
+
+# Weights
+q1_mat_addition[, i+1] <- weights
+
+  k <- which(val == i)
+# Stumps
+# Pick a stump.
+pick_stump_2 <- sample(0:1, 1)
+
+# Sample a split for either X1 or X2.
+x1_stump <- sample(splits, 1)
+x2_stump <- sample(splits, 1)
+
+# Compute the cutoff.
+cutoff <- x1_stump*(1-pick_stump_2) + pick_stump_2*x2_stump
+
+pick_x2[k+1] <- pick_stump_2
+cuts[k+1] <- cutoff
+
+# Compute h_t
+if(pick_stump_2 == 0){
+  # If we pick X1, then find if our observed value
+  # is below or above the cutoff.
+  h_t <- q1_mat$X1 < cutoff
+}else{
+  # Otherwise if we pick X2, check our observed values
+  # against this cutoff.
+    h_t <- q1_mat$X2 < cutoff
+}
+
+h_t <- ifelse(h_t == TRUE, 1, -1)
+
+# Errors function
+errors <- sum(weights * (q1_mat$Y != h_t))
+
+# Voting weight of h_t:
+alpha_t <- 0.5*log(1/errors -1)
+
+# Results of weight, or the recomputed weights.
+updated_weights <- weights*exp(-alpha_t * q1_mat$Y * h_t )
+Z_t <- sum(updated_weights)
+ 
+updated_weights <- updated_weights/Z_t
+
+
+# Voting power
+q1_mat_addition[, i+ 2] <- rep(alpha_t, 5)
+
+# Error
+q1_mat_addition[, i+3] <- rep(errors, 5)
+
+weights <- updated_weights
+predictions[,1+k] <- h_t
+}
+
+q1_mat_addition <- as.matrix(q1_mat_addition)
+colnames(q1_mat_addition) <-rep(c("Weight", "Vote", "Error"),3)
+
+labels <- c()
+for(i in 1:3){
+  if(pick_x2[i] == 1){
+    labels[i] <- paste0("X_2 > ", cuts[i]) 
+  }else{
+        labels[i] <- paste0("X_1 > ", cuts[i]) 
+        }
+ 
+}
+
+
+kable(q1_mat_addition, digits = 2, booktabs = TRUE, format = "latex") %>%
+    kable_styling(latex_options=c("hold_position"),  position = "center") %>%
+  add_header_above(c("Iteration 1" = 3, "Iteration 2" = 3,
+                     "Iteration 3" = 3)) %>%
+  add_header_above(c("X_1 > 0" = 3, "X_2 > 4" = 3,
+                     "X_1 > 4"= 3))
+```
+
+### 2) Does the algorithm stop at the third iteration? Justify your answer. 
+
+Recall that there are three criteria that can be used to stop the algorithm: 
+1) A maximum number of iterations is reached.
+2) Weak classifiers have no more than naive guesses i.e. errors 0.5.
+3) Zero error for the strong classifier.
+
+Additionally, in our case, "only adding a stump tree with a single split on $X_1$ or $X_2$ for each iteration, where the split can only be made at 0, 2, or 4" imposes a mazimum number of trees before we begin to repeat. Note that we have $\binom{2}{1} \binom{3}{1}$ possible trees given the number of covariates and the possible cut-off values. Since we did not impose this criteria, there is no reason for the algorithm to stop at the third iteration.
+
+Item (1) does not apply as we did impose a max.iter value. One could see how the number of covariates and cut-offs could be related to (1).
+
+Item (2) does not apply as the table above does not have steady 0.5 error.
+
+As for item (3), we can compute our strong classifier and see if this criteria is met:
+ 
+```{r, echo = FALSE}
+votes <- c(q1_mat_addition[1, 2],
+           q1_mat_addition[1, 5],
+           q1_mat_addition[1, 7])
+
+final_prediction <- sign(predictions %*% votes)
+
+# If we want it in 0,1 format; should also make the data as it was.
+# final_prediction <- ifelse(final_prediction < 0, 0, 1)
+
+final_error <- mean( (q1_mat$Y != final_prediction))
+
+q1_b_mat <- cbind("Actual" = q1_mat$Y, "Predicted" = final_prediction)
+colnames(q1_b_mat) <- c("Actual", "Predicted")
+
+
+kable(q1_b_mat, digits = 2, booktabs = TRUE, format = "latex") %>%
+    kable_styling(latex_options=c("hold_position"),  position = "center") %>%
+  add_header_above(c(" " = 1, "Error = 0.2" = 1))
+
+```
+
+Recall that the strong classifer is calculated by multiplying the $\alpha_t$'s with their respective prediction of that round ($t$), sum across and compute the $sign()$. Then the classification error is computed as the mean incorrect classifications. We can see that the third observation is misclassified and therefore we have a 0.2 error rate. Thus, criteria (3) does not apply and our algorithm would not have stopped.
+
+## Q2. Apply XGBoost to the following toy example.      
+
+
+### Let us start with $F_0(X) = 1.4$ and use the square loss to add additional regression trees. Suppose that the minimum number of observations in each leaf is 2, and no penalty is placed on the tree structure. 
+
+```{r, echo = FALSE}
+# Read in data.
+q2_mat <- readRDS("C:/Users/jcochanc/Documents/Big-Data/Homework/hw4_q2_mat.RDS")
+
+# Rename columns.
+colnames(q2_mat) <- c("Y", "X1", "X2")
+
+# Print to screen.
+kable(q2_mat, booktabs = TRUE, format = "latex") %>%
+  kable_styling(latex_options=c("hold_position"), position = "center")
+```
+
+
+
+### 1) Derive the formulae for $g_i$ and $k_i$ (1st and 2nd order derivatives of loss). Grow the first boosted tree. 
+
+Recall that the objective function is given by:
+
+$$ Obj = \sum_{i = 1}^n L(y_i, F(x_i)) + \sum_{k = 1}^t \Omega(h_k)$$
+
+which are the loss and penalty respectively. Then the objective function at some time/iteration $t$ is given by:
+
+$$ Obj^{(t)} = \sum_{i = 1}^n L(y_i, F_t(x_i)) + \sum_{k = 1}^t \Omega(h_k) $$
+
+Using additive trees, we have $F_t(x_i) = F_{t-1}(x_i) + h_t(x_i)$. Then under square-loss, our objective function at iteration $t$:
+
+$$ Obj^{(t)} = \sum_{i = 1}^n (y_i - F_t(x_i))^2 + \sum_{k = 1}^t \Omega(h_k) = \sum_{i = 1}^n (y_i - [F_{t-1}(x_i) + h_t(x_i)])^2 + \sum_{k = 1}^t \Omega(h_k)$$
+
+Recall that the loss function can be written using Taylor expansion, generally given by:
+
+$$f(x) \approx f(a) + \dfrac{f'(a)(x-a)}{1!} + \dfrac{f''(a)(x-a)^2}{2!} + \dots $$
+
+Then our loss function evaluated at $F_{t-1}(x_i)$:
+
+$$ L(y_i, F_t(x_i)) \approx L(y_i, F_{t-1}(x_i)) + \dfrac{\partial L(y_i, F_t(x_i))}{\partial F_t(x_i)}\vert_{F_t(x_i) = F_{t-1}(x_i) } \times (F_t(x_i) - F_{t-1}(x_i)) + $$
+
+ 
+$$ \dfrac{\partial^2 L(y_i, F_t(x_i))}{\partial F_t(x_i)^2}\vert_{F_t(x_i) = F_{t-1}(x_i) } \times (F_t(x_i) - F_{t-1}(x_i))^2$$
+
+NOTE: $$F_t(x_i) = F_{t-1}(x_i) +h_t(x_i) \Rightarrow (F_t(x_i) - F_{t-1}(x_i))^n = h_t(x_i)^n $$
+
+Finally, our loss function using taylor expansion is given by:
+
+$$L(y_i, F_t(x_i))  \approx L(y_i, F_{t-1}(x_i)) + g_i \times h_t(x_i) + k_i \times h_t(x_i)^2$$
+
+where 
+
+$$ g_i = \dfrac{\partial L(y_i, F_t(x_i))}{\partial F_t(x_i)} \vert_{F_t(x_i) = F_{t-1}(x_i) } =  \dfrac{\partial }{\partial F_t(x_i)}(y_i-F_t(x_i))^2 \vert_{F_t(x_i) = F_{t-1}(x_i) } =-2(y_i-F_{t-1}(x_i))$$
+
+$$ k_i = \dfrac{\partial^2 L(y_i, F_t(x_i))}{\partial F_t(x_i)^2}\vert_{F_t(x_i) = F_{t-1}(x_i) } =\dfrac{\partial }{\partial F_t(x_i)}-2(y_i-F_t(x_i))\vert_{F_t(x_i) = F_{t-1}(x_i) } = -2(0-1)\vert_{F_t(x_i) = F_{t-1}(x_i) }=2$$
+
+
+To grow the first boosted tree, we use $F_0(X) = 1.4$.
+
+```{r, echo = FALSE}
+# Set up the data frame.
+q2_mat <- as.data.frame(q2_mat)
+
+# Order X1 as we will split on that.
+q2_mat <- q2_mat[order(q2_mat$X1),]
+
+# Compute F_0, g1, k1.
+q2_mat$`F0` <- 1.4
+q2_mat$`g1` <- 2*(q2_mat$Y - 1.4)
+q2_mat$`k1` <- 2
+
+rownames(q2_mat) <- NULL
+
+kable(q2_mat, digits = 2, booktabs = TRUE, format = "latex") %>%
+    kable_styling(latex_options=c("hold_position"),  position = "center")
+```
+
+To grow our first tree, $h_1(x)$, we determine the first split based on the minimum objective function. In our first tree, we have 4 possible splits given our constraints of 2 observations minimum:
+
+$$X_1 \leq 8, Obj^{t=1} =-138.56$$
+$$X_1 \leq 15, Obj^{t=1} = -71.89$$
+$$X_1 \leq 16, Obj^{t=1} = -61.56$$
+$$X_2 \leq 0, Obj^{t=1} = -7.89 $$
+
+along with their respective objective function values. We see above that the optimal choice has  $X_1$ selected and a cut-off value of 8 with objective value -138.56. A second split occurs at $X_1 > 16$ with objective value -27.04.
+
+```{r, echo = FALSE}
+
+# Use all values and find optimal cut.
+x1_splits <- c(8, 15, 16)
+x2_splits <- 0
+
+scores <- c()
+for(i in 1:3){
+  current_split <- ifelse(q2_mat$X1 >x1_splits[i], 1, 0)
+
+
+
+G_0 <- sum(q2_mat$g1[current_split==0])
+K_0 <- sum(q2_mat$k1[current_split==0])
+
+G_1 <- sum(q2_mat$g1[current_split==1])
+K_1 <- sum(q2_mat$k1[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+scores[i] <- -0.5*sum(G^2/K)
+}
+
+current_split <- ifelse(q2_mat$X2 >x2_splits[1], 1, 0)
+
+
+
+G_0 <- sum(q2_mat$g1[current_split==0])
+K_0 <- sum(q2_mat$k1[current_split==0])
+
+G_1 <- sum(q2_mat$g1[current_split==1])
+K_1 <- sum(q2_mat$k1[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+scores[4] <- -0.5*sum(G^2/K)
+
+# Optimal cut at x1=8, calculate predictions
+current_split <- ifelse(q2_mat$X1 >x1_splits[which.min(scores)], 1, 0)
+
+G_0 <- sum(q2_mat$g1[current_split==0])
+K_0 <- sum(q2_mat$k1[current_split==0])
+
+G_1 <- sum(q2_mat$g1[current_split==1])
+K_1 <- sum(q2_mat$k1[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+w <- -G/K
+
+h1_yes <- w[2]
+h1_no <- w[1]
+
+q2_mat$`h1` <- ifelse(q2_mat$X1 > x1_splits[1], h1_yes, h1_no)
+
+# Now we split on the remaining values
+x1_splits <- c( 16)
+x2_splits <- 0
+scores <- c()
+
+current_split <- ifelse(q2_mat$X1[q2_mat$X1>8] >x1_splits[1], 1, 0)
+
+gvals <- q2_mat$g1[q2_mat$X1>8]
+kvals <- q2_mat$k1[q2_mat$X1>8]
+G_0 <- sum(gvals[current_split==0])
+K_0 <- sum(kvals[current_split==0])
+
+G_1 <- sum(gvals[current_split==1])
+K_1 <- sum(kvals[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+scores[1] <- -0.5*sum(G^2/K)
+
+
+current_split <- ifelse(q2_mat$X2[q2_mat$X1>8] >x2_splits[1], 1, 0)
+
+gvals <- q2_mat$g1[q2_mat$X1>8]
+kvals <- q2_mat$k1[q2_mat$X1>8]
+G_0 <- sum(gvals[current_split==0])
+K_0 <- sum(kvals[current_split==0])
+
+G_1 <- sum(gvals[current_split==1])
+K_1 <- sum(kvals[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+scores[2] <- -0.5*sum(G^2/K)
+
+# Pick x1 at 16
+
+current_split <- ifelse(q2_mat$X1[q2_mat$X1>8] >x1_splits[1], 1, 0)
+
+gvals <- q2_mat$g1[q2_mat$X1>8]
+kvals <- q2_mat$k1[q2_mat$X1>8]
+G_0 <- sum(gvals[current_split==0])
+K_0 <- sum(kvals[current_split==0])
+
+G_1 <- sum(gvals[current_split==1])
+K_1 <- sum(kvals[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+
+w <- -G/K
+
+h1_yes <- w[2]
+h1_no <- w[1]
+
+
+newvals <- ifelse(q2_mat$X1[q2_mat$X1>8] > x1_splits[1], h1_yes, h1_no)
+newvals <- c(NA, NA, newvals)
+
+
+for(i in 3:6){
+  q2_mat[i,7] <- newvals[i]
+}
+
+kable(q2_mat, digits = 2, booktabs = TRUE, format = "latex") %>%
+    kable_styling(latex_options=c("hold_position"),  position = "center") %>%
+  add_header_above(c(" " = 3, "Step 1" = 4))
+```
+
+Our $h_1(x_i)$ is simply the mean of the residuals $y_i-F_0(x_i)$ within each leaf of the tree (leaf determined by $X_1 > 15$). $F_1(x_i)$ is determined by summing $F_0(x_i)$ and $h_1(x_i) \times 0.1$
+
+### 2) With $F_1(X)$, grow the second tree. 
+
+To grow the second tree, we compute $g_2(x_i)$ below We recompute the $g_i$ values to find the optimal objective value to split on.
+
+```{r, echo = FALSE}
+
+q2_mat$`F1` <- q2_mat$`F0` + 0.1*q2_mat$`h1`
+
+q2_mat$`g2` <- 2*(q2_mat$Y - q2_mat$`F1`)
+
+q2_mat$`k2` <- 2
+
+
+
+kable(q2_mat, digits = 2, booktabs = TRUE, format = "latex") %>%
+    kable_styling(latex_options=c("hold_position"),  position = "center")%>%
+  add_header_above(c(" " = 3, "Step 1" = 4, "Step 2" = 3))
+
+```
+
+
+$$X_1 \leq 8, Obj^{t=1} =-167.66$$
+$$X_1 \leq 15, Obj^{t=1} = -88.46$$
+$$X_1 \leq 16, Obj^{t=1} = -74.49$$
+$$X_2 \leq 0, Obj^{t=1} = -8.99 $$
+
+We see that again, we choose to split on $X_1 > 8$.
+
+```{r, echo = FALSE}
+
+q2_mat_red <- q2_mat[,-c(4:7)]
+
+# Use all values and find optimal cut.
+x1_splits <- c(8, 15, 16)
+x2_splits <- 0
+
+scores <- c()
+for(i in 1:3){
+  current_split <- ifelse(q2_mat$X1 >x1_splits[i], 1, 0)
+
+
+
+G_0 <- sum(q2_mat$g2[current_split==0])
+K_0 <- sum(q2_mat$k2[current_split==0])
+
+G_1 <- sum(q2_mat$g2[current_split==1])
+K_1 <- sum(q2_mat$k2[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+scores[i] <- -0.5*sum(G^2/K)
+}
+
+current_split <- ifelse(q2_mat$X2 >x2_splits[1], 1, 0)
+
+
+
+G_0 <- sum(q2_mat$g2[current_split==0])
+K_0 <- sum(q2_mat$k2[current_split==0])
+
+G_1 <- sum(q2_mat$g2[current_split==1])
+K_1 <- sum(q2_mat$k2[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+scores[4] <- -0.5*sum(G^2/K)
+
+# Optimal cut at x1=8, calculate predictions
+current_split <- ifelse(q2_mat$X1 >x1_splits[which.min(scores)], 1, 0)
+
+G_0 <- sum(q2_mat$g2[current_split==0])
+K_0 <- sum(q2_mat$k2[current_split==0])
+
+G_1 <- sum(q2_mat$g2[current_split==1])
+K_1 <- sum(q2_mat$k2[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+w <- -G/K
+
+h1_yes <- w[2]
+h1_no <- w[1]
+
+q2_mat$`h2` <- ifelse(q2_mat$X1 > x1_splits[1], h1_yes, h1_no)
+
+# Now we split on the remaining values
+x1_splits <- c( 16)
+x2_splits <- 0
+scores <- c()
+
+current_split <- ifelse(q2_mat$X1[q2_mat$X1>8] >x1_splits[1], 1, 0)
+
+gvals <- q2_mat$g2[q2_mat$X1>8]
+kvals <- q2_mat$k2[q2_mat$X1>8]
+G_0 <- sum(gvals[current_split==0])
+K_0 <- sum(kvals[current_split==0])
+
+G_1 <- sum(gvals[current_split==1])
+K_1 <- sum(kvals[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+scores[1] <- -0.5*sum(G^2/K)
+
+
+current_split <- ifelse(q2_mat$X2[q2_mat$X1>8] >x2_splits[1], 1, 0)
+
+gvals <- q2_mat$g2[q2_mat$X1>8]
+kvals <- q2_mat$k2[q2_mat$X1>8]
+G_0 <- sum(gvals[current_split==0])
+K_0 <- sum(kvals[current_split==0])
+
+G_1 <- sum(gvals[current_split==1])
+K_1 <- sum(kvals[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+scores[2] <- -0.5*sum(G^2/K)
+```
+
+The remaining cut values are below and their respective objective values.
+
+
+
+
+$$X_1 \leq 16, Obj^{t=2} = -32.72$$
+$$X_2 \leq 0, Obj^{t=2} = -28.88 $$
+
+```{r, echo = FALSE}
+# Pick x1 at 16
+current_split <- ifelse(q2_mat$X1[q2_mat$X1>8] >x1_splits[1], 1, 0)
+
+gvals <- q2_mat$g2[q2_mat$X1>8]
+kvals <- q2_mat$k2[q2_mat$X1>8]
+G_0 <- sum(gvals[current_split==0])
+K_0 <- sum(kvals[current_split==0])
+
+G_1 <- sum(gvals[current_split==1])
+K_1 <- sum(kvals[current_split==1])
+
+G <- c(G_0, G_1)
+K <- c(K_0, K_1)
+
+w <- -G/K
+
+h1_yes <- w[2]
+h1_no <- w[1]
+
+newvals <- ifelse(q2_mat$X1[q2_mat$X1>8] > x1_splits[1], h1_yes, h1_no)
+newvals <- c(NA, NA, newvals)
+
+
+for(i in 3:6){
+  q2_mat[i,11] <- newvals[i]
+}
+
+
+kable(q2_mat, digits = 2, booktabs = TRUE, format = "latex") %>%
+    kable_styling(latex_options=c("hold_position"),  position = "center")%>%
+  add_header_above(c(" " = 3, "Step 1" = 4, "Step 2" = 4))
+
+```
+
+### 3) If we add a penalty $\gamma$ on the number of leaves. At what value of $\gamma$, will the tree structure in (a) change?   
+ 
+In our previous problem, we assumed that no penalty referred to both $\lambda$ and $\gamma$ are set to zero.
+
+If we use equation 6 from the original paper and apply some algebra, we find that $\gamma = 4.87$
+
+```{r, echo = FALSE}
+vals <- list()
+for(i in c(5,6,9,10)){
+  vals[[i]] <- c(q2_mat[1,i] + q2_mat[2,i], q2_mat[3,i] + q2_mat[4,i],
+          q2_mat[5,i] + q2_mat[6,i])
+}
+G1 <- unlist(vals[[5]])
+G2 <- unlist(vals[[9]])
+K1 <- unlist(vals[[6]])
+K2 <-unlist(vals[[10]])
+
+(-0.5*sum(G1^2/(K1+0.1))--0.5*sum(G2^2/(K2+0.1)))/(6)
+
+
+```
+
+
+## Q3. JWHT Page  Ch4. Q11 (a-c, g)
+
+NOTE: This problem was seen in Homework 2. I am citing myself and using some of my code again.
+
+### In this problem, you will develop a model to predict whether a given car gets high or low gas mileage based on the Auto data set.
+
+```{r}
+# Load in the data.
+df <- Auto
+```
+
+### (a) Create a binary variable, mpg01, that contains a 1 if mpg contains a value above its median, and a 0 if mpg contains a value below its median. You can compute the median using the median() function. Note you may find it helpful to use the data.frame() function to create a single data set containing both mpg01 and the other Auto variables.
+
+```{r}
+df2 <- df %>%
+  mutate(mpg01 = ifelse(mpg > median(mpg), 1, -1)) %>%
+  dplyr::select(-mpg)
+```
+
+We begin by creating the outcome variable which we call `mpg01`. We drop `mpg` as it would not make any sense to include it in the set of predictors - in fact, we should expect perfect prediction with its inclusion in the variable set.
+
+### (b) Explore the data graphically in order to investigate the association between mpg01 and the other features. Which of the other features seem most likely to be useful in predicting mpg01? Scatterplots and boxplots may be useful tools to answer this question. Describe your findings.
+
+In homework 2, we made the decision to drop `name` for simplicity as it is very messy. We would expect that certain manufacturers and specifically, models, to perform better in terms of gas but we do not explore this feature here.
+
+```{r, echo = FALSE}
+# Create binary as stated above.
+df2 <- df %>%
+  mutate(mpg01 = ifelse(mpg > median(df$mpg), 1, -1)) %>%
+  mutate(mpg01 = as.factor(mpg01)) %>%
+  dplyr::select(-mpg, -name) %>%
+  mutate(origin = as.factor(origin))
+
+sq<-glm(mpg01~., data = df2, family = binomial)
+model <- step(sq,direction = "both", trace = 0)
+```
+
+Finally, we use a mixture or AIC selection and intuition to select features for inclusion in our models. We note that `displacement`, `horsepower`, `weight`, and `acceleration` are related to `mpg`. We also note that the covariates are linearly related. Our AIC model found `horsepower` and `weight`; overlayed with our pairs plot below, we commit to a model that includes `horsepower` `weight`, `year`, and `origin`. 
+
+```{r, echo = FALSE, fig.align = "center", fig.asp = .68, fig.width=6.5}
+pairs(df, col = "darkblue")
+```
+
+
+### (c) Split the data into a training set and a test set.
+
+We use 80\% of our data for training and the remaining for test.
+
+```{r}
+df2 <- df2 %>%
+  dplyr::select(horsepower, weight, year, origin, mpg01)
+
+set.seed(14)
+# Random sample.
+train_set <- sample(1:nrow(df2), floor(0.8*nrow(df2)))
+
+train <- df2[train_set,]
+
+test <- df2[-train_set,]
+```
+
+### (g) Perform KNN on the training data, with several values of K, in order to predict mpg01. Use only the variables that seemed most associated with mpg01 in (b). What test errors do you obtain? Which value of K seems to perform the best on this data set?
+
+To scan for the optimal K, we sample the training data, further splitting training into training for K and testing for K. We grab about 80\% of the training for K-scanning.
+
+```{r, echo = FALSE, fig.align = "center", fig.asp = .78, fig.width=5.5, warning = FALSE}
+set.seed(22)
+
+# We randomly sample a set within the training.
+looping_set <- sample(1:nrow(train), 250)
+
+# Split the training for k-search.
+training_data <- train[looping_set,]
+
+# Pull the outcome.
+outcome_train <- training_data %>% pull(mpg01) 
+
+# Pull the testing for k-search. 
+test_data <- train[-looping_set,]
+
+# Initialize error for plotting.
+error_rate <- c()
+
+# Loop through all the rows available.
+for(i in 1:250){
+  # Predict for k=i
+  knn_pred_y = knn(training_data,test_data,outcome_train,k=i)
+  
+  # Store the error rate.
+  error_rate[i] = mean(test_data$mpg01 != knn_pred_y)
+}
+
+plot(error_rate, type = "l", xlab = "K values", ylab = "Error Rate",
+     main = "Error rates for varying K-values")
+points(which(error_rate == min(error_rate)),
+       error_rate[which(error_rate == min(error_rate))], 
+       col = "red", pch = "*")
+```
+
+
+We see above that there are a few values of k that minimize the error. We seek to minimize the error since it is as important to predict above the median as it is to predict below. The error rate
+
+```{r, echo =FALSE}
+table <- rbind("K" = which(error_rate == min(error_rate)),
+"Error" = error_rate[which(error_rate == min(error_rate))])
+kable(table, digits =2, booktabs = TRUE, format = "latex") %>%
+    kable_styling(latex_options=c("hold_position"),  position = "center")
+```
+
+Below we have a confusion matrix using the left out testing data. We see that the accuracy of this model is ~91\% with a PPV of 97\% and NPV of 87\%.
+
+```{r, echo = FALSE}
+outcome_train <- train %>% pull(mpg01) 
+
+knn_pred_y = knn(train,test,outcome_train,k=3)
+error_rate[i] = mean(test$mpg01 != knn_pred_y)
+confusionmat <- table( prediction = knn_pred_y, truth =test$mpg01)
+
+accuracy <- sum(diag(confusionmat))/sum(confusionmat)
+
+confusionmat
+```
+## Q4. Apply AdaBoost and XGBoost to JWHT Ch8 Q11. Which method gives the best result? Summarize your findings. 
+
+### This question uses the Caravan data set.
+
+```{r}
+df <- Caravan
+```
+
+### (a) Create a training set consisting of the first 1,000 observations, and a test set consisting of the remaining observations.
+
+```{r}
+# First 1000.
+train <- df[1:1000,]
+
+# The remaining.
+test <- df[-c(1:1000),]
+```
+
+
+### (b) Fit a boosting model to the training set with Purchase as the response and the other variables as predictors. Use 1,000 trees, and a shrinkage value of 0.01. Which predictors appear to be the most important?
+
+First we apply Adaboost.
+
+```{r, fig.align = "center", fig.asp = .78, fig.width=5.5, warning = FALSE}
+# Model.
+ada_model <- boosting(Purchase~., data=train, boos=FALSE, 
+                      mfinal=100)
+
+# How many of the 85 variables have zero importance.
+sum(ada_model$importance == 0)
+
+# Grab the top 5 important variables to compare.
+imp_var <- ada_model$importance[order(ada_model$importance, 
+                                      decreasing = T)]
+imp_var <- imp_var[1:5]
+
+# Plot importance.
+barplot(imp_var,horiz=TRUE, cex.names=0.4)
+```
+
+Above we see that the following are the top five are identified as important in prediction: `MOSTYPE`, `PPERSAUT`, `MOPLHOOG`, `MBERARBG`, and `PBRAND`.
+
+Below, XGBoost finds `MKOOPKLA`, `PPERSAUT`, `PPLEZIER`, `MGODPR`, and `MOSTYPE`.
+
+We see that `PPERSAUT` is the only variable found in common in the top five. If we examine the top 15 of variable importance in Adaboost, we only find `MKOOPKLA` in common sitting in 6th place.
+
+```{r, fig.align = "center", fig.asp = .78, fig.width=5.5, warning = FALSE}
+# We begin by getting the data ready for use.
+# Train data without outcome.
+train_data <- train %>%
+  dplyr::select(-Purchase)
+
+# Train outcome as indicator.
+train_label <- ifelse(train$Purchase == "Yes", 1, 0)
+
+set.seed(14)
+# Apply the xg model.
+xg_model <- xgboost(data = as.matrix(train_data),
+                    label = train_label, max.depth = 2, eta = 1,
+                    nthread = 2, nrounds = 2, 
+                    objective = "binary:logistic")
+
+# Grab the important variables.
+importance_matrix <- xgb.importance(model = xg_model)
+
+```
+
+
+### (c) Use the boosting model to predict the response on the test data. Predict that a person will make a purchase if the estimated probability of purchase is greater than 20 \%. Form a confusion matrix. What fraction of the people predicted to make a purchase do in fact make one? How does this compare with the results obtained from applying KNN or logistic regression to this data set?
+
+Our Adaboost model has the following confusion matrix when we use a cut-off of 0.2.
+
+```{r}
+# Predict using adaboost.
+pred <- predict(ada_model, test)
+
+# Bind th results.
+result <- cbind(test, prob = pred$prob, pred = pred$class)
+
+# We grab the probability of Purchasing == Yes.
+# We will use this to change our cut-off at 0.2.
+prediction <- pred$prob[,2]
+
+prediction <- ifelse(prediction > 0.2, "Yes", "No")
+
+table1 <- table( pred = prediction, truth = result$Purchase)
+
+accuracy <- sum(diag(table1))/sum(table1)
+accuracy
+```
+
+The model predicted class has an accruacy of ~0.93, shifting this cut-off decreases the accuracy to ~0.72. At a glance, this seems like a tremendous loss, but the consideration may be predicting purchase i.e. is it more important to correctly predict a purchase and focus on our sensitivity or are we looking for a balance. Our confusion matrix above has a PPV of $\dfrac{133}{133+156} = 0.46$.
+
+Below, our XGboost model has an accuracy of ~0.93. We see that the model, after adjusting cut-off, has a 1% decrease in accruacy as a model using a 0.5 cut-off performs only slightly better. We see that the strength of this model is its ability in classifying the No's in Purchase. The PPV is $\dfrac{17}{17+272} = 0.058$.
+
+```{r}
+# Mutate the test data for xgboost.
+test_data <-  test %>%
+  dplyr::select(-Purchase)
+
+pred <- predict(xg_model, as.matrix(test_data))
+
+prediction <- ifelse(pred > 0.2, "Yes", "No")
+
+table2 <- table( pred = prediction, truth = test$Purchase)
+
+accuracy <- sum(diag(table2))/sum(table2)
+accuracy
+```
+
+Again, if Yes is our interest, then this model, although highly accurate, performs poorly. We can see that a naive model that predicts everything as No has about 0.94 accuracy. We can see this by simply noting that the proportion of No's in the test data is 
+
+```{r}
+table(test$Purchase)/nrow(test)
+```
+
+and so simply ignoring our sensitivity, we can attain a highly accurate model in a naive manner.
+
+
+Below a confusion matrix of the predictions as made by the specified 0.2 cut-off using logistic regression. Again, we interpret the question to refer to the Positive Predicted Value which in this case is 20\% $\sim \dfrac{58}{58+231}$. 
+
+```{r}
+logit_model <- glm(Purchase ~ ., data = train,
+                   family = binomial(link = "logit"))
+
+purchase_predicted <- predict(logit_model, newdata = test,
+                              type = "response")
+
+purchase_predicted <- ifelse(purchase_predicted > 0.2, 1, 0)
+
+table(Predicted = purchase_predicted, Actual = test$Purchase)
+```
+
+Soley on the basis of the PPV, we would select the Adaboost model while if accruacy were our goal, the XGboost model has the highest accuracy. Overall, logistic has been outperformed but not on even ground. Using a logistic model requires thought with regard to variable inclusion.
