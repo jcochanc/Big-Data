@@ -1,0 +1,8 @@
+---
+output: pdf_document
+---
+
+# Code Appendix
+
+```{r code = readLines(knitr::purl("C:/Users/jcochanc/Documents/Big-Data/Homework/hw4.Rmd", documentation = 0)), eval = FALSE}
+```
